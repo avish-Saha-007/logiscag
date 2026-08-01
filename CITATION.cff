@@ -14,12 +14,12 @@ authors:
     given-names: "Avish"
     email: "sahaavish@gmail.com"
     # TODO: replace with your real ORCID (register free at orcid.org)
-    orcid: "https://orcid.org/0000-0000-0000-0000"
+    orcid: "https://orcid.org/0009-0001-1124-7119"
     # TODO: confirm how you want to appear -- adidas India, BITS Pilani, or both
     affiliation: "TODO: adidas India / BITS Pilani"
 version: 0.1.0
 # TODO: set to the actual date of the tagged GitHub release (YYYY-MM-DD)
-date-released: "2026-01-01"
+date-released: "2026-08-01"
 license: Apache-2.0
 repository-code: "https://github.com/avish-Saha-007/logiscag"
 url: "https://github.com/avish-Saha-007/logiscag"
@@ -47,7 +47,7 @@ keywords:
 #   authors:
 #     - family-names: "Saha"
 #       given-names: "Avish"
-#       orcid: "https://orcid.org/0000-0000-0000-0000"
+#       orcid: "https://orcid.org/0009-0001-1124-7119"
 #   journal: "Journal of Open Source Software"
 #   year: 2027
 #   volume: "TODO"
