@@ -10,7 +10,7 @@
 #   outputs/dataco_v2_tc_none/     TVAE+CTGAN --levels none
 #   outputs/dataco_v2_tc_srj/      TVAE+CTGAN --levels strict+reject
 set -euo pipefail
-REPO="/Users/apple/Downloads/CAG_bundle/synthetic-data-generation"
+REPO="${REPO:-$(git rev-parse --show-toplevel)}"
 cd "$REPO"
 
 CG_NONE="outputs/dataco_v2_cg_none"
