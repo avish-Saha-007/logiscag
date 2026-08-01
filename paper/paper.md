@@ -17,7 +17,7 @@ authors:
 # domain collaborators) as evidence of collaborative context for an otherwise
 # single-author project. Discuss with your BITS supervisor before submitting.
 affiliations:
-  - name: "[Affiliation — Independent Researcher]"
+  - name: Affiliation — Independent Researcher
     index: 1
 date: "[submission date]"
 bibliography: paper.bib
