@@ -1,0 +1,57 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "LogiSCAG: Operational-Validity Enforcement and Four-Pillar Evaluation for Synthetic Supply-Chain Data"
+type: software
+abstract: >-
+  LogiSCAG is a generator-agnostic toolkit for enforcing and auditing
+  operational-validity constraints in synthetic tabular supply-chain data.
+  It provides a declarative constraint catalog, a rejection-sampling
+  enforcement wrapper compatible with any fitted tabular synthesizer, and a
+  leakage-safe four-pillar evaluation harness (integrity, fidelity, utility,
+  privacy) with power-validated privacy auditing.
+authors:
+  - family-names: "Saha"
+    given-names: "Avish"
+    email: "sahaavish@gmail.com"
+    # TODO: replace with your real ORCID (register free at orcid.org)
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+    # TODO: confirm how you want to appear -- adidas India, BITS Pilani, or both
+    affiliation: "TODO: adidas India / BITS Pilani"
+version: 0.1.0
+# TODO: set to the actual date of the tagged GitHub release (YYYY-MM-DD)
+date-released: "2026-01-01"
+license: Apache-2.0
+repository-code: "https://github.com/avish-Saha-007/logiscag"
+url: "https://github.com/avish-Saha-007/logiscag"
+keywords:
+  - synthetic-data
+  - tabular-data
+  - supply-chain
+  - constraint-validation
+  - data-privacy
+  - data-evaluation
+  - logistics
+
+# --- After the first GitHub release, Zenodo mints a DOI. Add it here: ---
+# identifiers:
+#   - type: doi
+#     value: "10.5281/zenodo.TODO"
+#     description: "Archived snapshot of version 0.1.0"
+
+# --- Once a JOSS paper is accepted, uncomment and fill this in. It tells
+#     citation tools "cite the paper, not just the repository". ---
+#
+# preferred-citation:
+#   type: article
+#   title: "LogiSCAG: Operational-Validity Enforcement and Four-Pillar Evaluation for Synthetic Supply-Chain Data"
+#   authors:
+#     - family-names: "Saha"
+#       given-names: "Avish"
+#       orcid: "https://orcid.org/0000-0000-0000-0000"
+#   journal: "Journal of Open Source Software"
+#   year: 2027
+#   volume: "TODO"
+#   issue: "TODO"
+#   start: "TODO"
+#   doi: "10.21105/joss.TODO"
+#   url: "https://joss.theoj.org/papers/10.21105/joss.TODO"

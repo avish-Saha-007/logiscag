@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logiscag"
+version = "0.1.0"
+description = "A constraint-validated benchmark and toolkit for operationally-valid synthetic supply-chain data"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+# >=3.10 matches the CI matrix and the paper. The code itself would run on 3.9
+# (the one PEP-604 annotation is guarded by `from __future__ import annotations`),
+# but 3.9 is not tested, so it is not claimed.
+requires-python = ">=3.10"
+authors = [
+    { name = "Avish Saha", email = "sahaavish@gmail.com" },
+]
+maintainers = [
+    { name = "Avish Saha", email = "sahaavish@gmail.com" },
+]
+keywords = [
+    "synthetic-data",
+    "tabular-data",
+    "supply-chain",
+    "logistics",
+    "constraint-validation",
+    "data-privacy",
+    "data-evaluation",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    # numpy<2 pinned deliberately: the torch wheel that SDV's optional extra
+    # pulls in (torch 2.2.2) was compiled against the numpy 1.x ABI and
+    # crashes/warns under numpy 2.x. Verified in a clean venv during packaging
+    # -- see KNOWN_ISSUES.md. Revisit this pin if/when upgrading the sdv extra.
+    "numpy<2",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+    "matplotlib",
+    "seaborn",
+    "pyyaml",
+]
+
+[project.urls]
+Homepage = "https://github.com/avish-Saha-007/logiscag"
+Repository = "https://github.com/avish-Saha-007/logiscag"
+Issues = "https://github.com/avish-Saha-007/logiscag/issues"
+Changelog = "https://github.com/avish-Saha-007/logiscag/blob/main/CHANGES.md"
+
+[project.optional-dependencies]
+# Pinned to the version this package was verified against during packaging.
+# Unpinned, pip resolves to whatever is current, and SDV's constraint API has
+# changed across minor versions in ways that silently affect the middle
+# strictness tiers -- see KNOWN_ISSUES.md. Relax deliberately, not by accident.
+sdv = ["sdv==1.37.2"]
+test = ["pytest>=7"]
+dev = ["pytest>=7", "sdv==1.37.2"]
+
+[project.scripts]
+logiscag-reproduce = "logiscag.reproduce:main"
+
+[tool.setuptools]
+packages = ["logiscag", "logiscag.constraints", "logiscag.adapters", "pipeline"]
+py-modules = ["privacy_utility_sweep", "dataco_adapter"]
+
+[tool.setuptools.package-data]
+"logiscag.constraints" = ["catalog/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

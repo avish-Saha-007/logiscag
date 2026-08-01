@@ -1,0 +1,39 @@
+# Byte-compiled / optimised / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Run outputs (regenerate with `python -m logiscag.reproduce`)
+outputs/
+sweep_summary.csv
+sweep_significance.csv
+trtr_baseline.json
+_reproduce_canonical.csv
+
+# Data — the DataCo CSV is downloaded by the user under DataCo's own terms.
+# See DATASHEET.md.
+DataCoSupplyChainDataset.csv
+*.csv.gz

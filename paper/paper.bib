@@ -1,0 +1,108 @@
+% paper.bib for the LogiSCAG JOSS submission
+%
+% BEFORE SUBMITTING, two entries still need a human check:
+%   1. sdvcag -- re-visit the docs URL and fill the accessed-on date. Doc pages
+%      change; this is a freshness check, not an authorship question.
+%   2. rekatsinas2017holoclean -- confirm volume/pages against the PVLDB record.
+%   3. saha2026dissertation -- fill in once the dissertation is deposited.
+% Do not submit any entry whose facts you have not personally confirmed.
+%
+% Provenance notes that were previously in `note = {...}` fields have been
+% moved here, because BibTeX renders `note` into the printed reference list.
+%   - syntheval: peer-reviewed journal version confirmed (DAMI 39(1), 2025);
+%     cite this rather than arXiv:2404.15821.
+%   - tapas: author list and venue confirmed against arXiv:2211.06550 and the
+%     OpenReview/ORA record.
+%   - tabkg2026: author list confirmed from the arXiv abstract page.
+%   - dataco: confirmed against the Mendeley Data record (V5, 2019, 180,519
+%     rows / 53 columns). Dataset redistribution terms still need separate
+%     confirmation if any derived data is released.
+
+@inproceedings{patki2016sdv,
+  author    = {Patki, Neha and Wedge, Roy and Veeramachaneni, Kalyan},
+  title     = {The Synthetic Data Vault},
+  booktitle = {2016 IEEE International Conference on Data Science and Advanced Analytics (DSAA)},
+  year      = {2016},
+  pages     = {399--410},
+  doi       = {10.1109/DSAA.2016.49}
+}
+
+@inproceedings{xu2019ctgan,
+  author    = {Xu, Lei and Skoularidou, Maria and Cuesta-Infante, Alfredo and Veeramachaneni, Kalyan},
+  title     = {Modeling Tabular Data using Conditional {GAN}},
+  booktitle = {Advances in Neural Information Processing Systems 32 (NeurIPS)},
+  year      = {2019}
+}
+
+@misc{sdvcag,
+  author       = {{DataCebo, Inc.}},
+  title        = {Constraint-Augmented Generation ({CAG}) --- {SDV} documentation},
+  howpublished = {\url{https://docs.sdv.dev/sdv/concepts/constraint-augmented-generation-cag}},
+  year         = {2026},
+  note         = {Accessed: [TODO -- fill in at final submission]}
+}
+
+@article{syntheval,
+  author  = {Lautrup, Anton D. and Hyrup, Tobias and Zimek, Arthur and Schneider-Kamp, Peter},
+  title   = {{SynthEval}: A Framework for Detailed Utility and Privacy Evaluation of Tabular Synthetic Data},
+  journal = {Data Mining and Knowledge Discovery},
+  volume  = {39},
+  number  = {1},
+  pages   = {6},
+  year    = {2025},
+  doi     = {10.1007/s10618-024-01081-4}
+}
+
+@inproceedings{tapas,
+  author    = {Houssiau, Florimond and Jordon, James and Cohen, Samuel N. and Daniel, Owen and Elliott, Andrew and Geddes, James and Mole, Callum and Rangel-Smith, Camila and Szpruch, Lukasz},
+  title     = {{TAPAS}: a Toolbox for Adversarial Privacy Auditing of Synthetic Data},
+  booktitle = {NeurIPS 2022 Workshop on Synthetic Data for Empowering ML Research},
+  year      = {2022}
+}
+
+@article{tabkg2026,
+  author  = {Long, Yunbo and Zheng, Ge and Xu, Liming and Brintrup, Alexandra},
+  title   = {Generating Logically Consistent Synthetic Supply Chain Data with {LLM}-Driven Knowledge Graph Reasoning},
+  journal = {arXiv preprint arXiv:2605.26823},
+  year    = {2026}
+}
+
+@inproceedings{rekatsinas2017holoclean,
+  author    = {Rekatsinas, Theodoros and Chu, Xu and Ilyas, Ihab F. and R{\'e}, Christopher},
+  title     = {{HoloClean}: Holistic Data Repairs with Probabilistic Inference},
+  booktitle = {Proceedings of the VLDB Endowment},
+  volume    = {10},
+  number    = {11},
+  year      = {2017},
+  pages     = {1190--1201}
+}
+
+@misc{dataco,
+  author       = {Constante, Fabian and Silva, Fernando and Pereira, Ant{\'o}nio},
+  title        = {{DataCo} Smart Supply Chain for Big Data Analysis},
+  howpublished = {Mendeley Data, V5},
+  year         = {2019},
+  doi          = {10.17632/8gx2fvg2k6.5}
+}
+
+@article{gebru2021datasheets,
+  author  = {Gebru, Timnit and Morgenstern, Jamie and Vecchione, Briana and Vaughan, Jennifer Wortman and Wallach, Hanna and Daum{\'e} III, Hal and Crawford, Kate},
+  title   = {Datasheets for Datasets},
+  journal = {Communications of the ACM},
+  volume  = {64},
+  number  = {12},
+  pages   = {86--92},
+  year    = {2021},
+  doi     = {10.1145/3458723}
+}
+
+% TODO: fill in and cite from the Research impact section. An examined,
+% deposited dissertation is the strongest concrete evidence available for
+% JOSS's research-impact requirement -- add the repository handle or URL.
+@mastersthesis{saha2026dissertation,
+  author  = {Saha, Avish},
+  title   = {[TODO: dissertation title]},
+  school  = {[TODO: BITS Pilani / institution as it should appear]},
+  year    = {2026},
+  note    = {[TODO: repository handle or URL once deposited]}
+}

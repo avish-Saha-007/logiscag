@@ -1,0 +1,129 @@
+# Seed constraint catalog, declared so a compliance/governance reader can audit
+# each rule without reading Python. SEVEN entries, mapping to the seven checks
+# audit_constraints() emits. The paper's Appendix C specifies eight rules; see
+# the R1 note below and KNOWN_ISSUES.md finding 7 for why the counts differ.
+#
+# `audit_key` names the actual key in pipeline.constraints.audit_constraints()'s
+# output dict that the engine pulls a violation count from -- the catalog
+# DESCRIBES the existing checks, it does not re-implement them. Where the
+# code's behavior diverges from the paper's stated rule (see `notes`), this
+# catalog reflects what the CODE does, not what the paper claims, so the gap
+# stays visible rather than getting silently smoothed over by a prettier
+# description. See ../../../KNOWN_ISSUES.md for full detail on each gap.
+
+- id: R1_temporal_ordering
+  name: Temporal event ordering
+  category: temporal
+  type: hard
+  predicate: "capture_ts <= ship_ts <= delivery_ts (and promise_ship_ts <= promise_delivery_ts, when present)"
+  forbids: "a shipment before its order capture, a delivery before its shipment, or a promised delivery before its promised shipment"
+  severity: high
+  on_violation: reject   # enforced at the strict+reject tier via cag_rejection_filter
+  tolerance_days: 0
+  rationale: "Physical event chain; an impossible ordering can never occur in reality."
+  audit_key: R1_temporal_order
+  notes: >
+    Paper's Appendix C groups this with R4 (promise-date ordering) under one
+    audit key. The ordering half of R4 is folded in here. The non-negativity
+    half of R4 (promised_transit_days >= 0) was CONFIRMED 2026-07-27 to be
+    checked NOWHERE -- not in audit_constraints, not in build_sdv_constraints,
+    not in cag_rejection_filter. This is why the catalog enumerates seven
+    entries while the paper specifies eight rules. See KNOWN_ISSUES.md
+    finding 7; a decision is required before publication.
+
+- id: R2_positive_transit
+  name: Positive transit duration
+  category: arithmetic
+  type: hard
+  predicate: "transit_duration_days > 0"
+  forbids: "zero or negative shipping duration"
+  severity: high
+  on_violation: reject
+  tolerance_days: 0
+  rationale: "A shipment that takes zero or negative time to arrive is physically impossible."
+  audit_key: R2_positive_transit
+
+- id: R3_non_negative_capture_latency
+  name: Non-negative order-capture latency
+  category: arithmetic
+  type: hard
+  predicate: "capture_latency_days >= -CAPTURE_LATENCY_TOLERANCE_DAYS"
+  forbids: "an order captured a meaningful amount of time before it was created"
+  severity: high
+  on_violation: reject
+  tolerance_days: 0.0000115740740740741   # 1 second, expressed in days (1/86400)
+  rationale: "Capture cannot precede creation. A small (~1 second) tolerance absorbs the documented OMS/DPE clock-skew artefact (the same root cause R1 already excludes its created<=capture sub-check for) without licensing genuine violations."
+  audit_key: R3_non_negative_capture_latency
+  notes: >
+    RESOLVED (was a code<->paper mismatch): the paper's Appendix C lists R3
+    as hard; audit_constraints() previously computed this check under an
+    "_info"-suffixed key, excluded from total_hard_violations. It is now a
+    genuine hard rule, counted in total_hard_violations, with a named
+    CAPTURE_LATENCY_TOLERANCE_DAYS constant (~1 second) absorbing the same
+    OMS/DPE clock-skew noise documented for R1. On the DataCo benchmark
+    specifically, capture_latency_days is identically 0 by construction (the
+    adapter sets order-creation and order-capture to the same timestamp), so
+    this rule still never fires for the published Table 1 numbers -- the fix
+    is a no-op on this benchmark by data construction, not by the rule being
+    toothless. See KNOWN_ISSUES.md finding 3 for the history.
+
+- id: R5_referential_carrier_integrity
+  name: Referential carrier/service integrity
+  category: referential
+  type: hard
+  predicate: "(last_scac, carrier_service_code) in KnownCombos, where KnownCombos is derived from REAL/training data"
+  forbids: "a synthetic row whose carrier/service combination was never observed in the real training data (including a missing carrier or service code, which can never be a member of a real-data-derived vocabulary)"
+  severity: high
+  on_violation: reject
+  rationale: "A row must name a real, previously-observed carrier x service combination to be operationally actionable -- not just a non-empty one."
+  audit_key: R4_referential_integrity
+  notes: >
+    UPGRADED (was a code<->paper mismatch): audit_constraints() now accepts
+    an optional `valid_combos` reference vocabulary (see
+    build_valid_carrier_combos(real_df)); when supplied, this rule is checked
+    as true combination-membership against it, matching the paper's
+    ¬((scac, svc) not in KnownCombos) specification. valid_combos must be
+    derived from REAL/training data, never from the synthetic data being
+    audited, or every combination would be trivially valid. When no
+    valid_combos is supplied, audit_constraints falls back to the old,
+    weaker presence-only check (non-null/non-empty) and raises a
+    UserWarning every call -- the fallback is documented, not silent.
+    cag_rejection_filter() and build_sdv_constraints()'s SDV-native "strict"
+    tier are unchanged by this fix and still only do presence-checking (the
+    former) or are not currently enforced at all by the installed SDV
+    version (the latter -- see KNOWN_ISSUES.md finding 1); this upgrade is
+    audit/reporting-layer only. See KNOWN_ISSUES.md finding 4 for the
+    history.
+
+- id: R6_label_cardinality
+  name: Label cardinality
+  category: cardinality
+  type: hard
+  predicate: "delay_label in {0, 1, 2}"
+  forbids: "a label outside the canonical 3-class delay scheme"
+  severity: high
+  on_violation: reject
+  rationale: "Downstream models and the BUS metric assume exactly three ordinal delay classes."
+  audit_key: R5_label_cardinality
+
+- id: R7_label_sla_consistency
+  name: Label/SLA-buffer consistency
+  category: arithmetic
+  type: hard
+  predicate: "delay_label == DeriveLabel(sla_buffer_days)"
+  forbids: "a label that disagrees with the label that scheduled-vs-actual transit days would imply"
+  severity: high
+  on_violation: reject
+  rationale: "The label must be a deterministic function of the SLA buffer, not an independently-drawn field, or a synthesizer can produce internally-inconsistent rows."
+  audit_key: R3b_label_sla_consistency
+
+- id: R8_carrier_calendar_plausibility
+  name: Carrier operating-calendar plausibility
+  category: calendar
+  type: soft
+  predicate: "shipment_weekday in carrier's known non-holiday operating days"
+  forbids: "a shipment dated on a weekday a given carrier (SCAC) is not known to operate"
+  severity: low
+  on_violation: flag
+  rationale: "Soft plausibility signal; never rejects, since the calendar reference is incomplete by construction (no holiday calendar)."
+  audit_key: R6_scac_calendar_soft

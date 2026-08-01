@@ -1,0 +1,186 @@
+# Configuration for the Synthetic Data Generation Pipeline
+#
+# Runtime precedence (implemented):
+# 1) CLI arguments
+# 2) config.yaml values
+# 3) in-code hard defaults
+#
+# Implementation mapping (where each value is consumed):
+# - Loader entrypoint:
+#   `viva_demo.py` -> `_load_yaml_config(...)` -> passes `config_overrides` into `run_pipeline(...)`.
+#
+# - data_path:
+#   `viva_demo.py` sets `real_data_path` fallback from `config.yaml` when `--real-data` is not passed
+#   (demo mode intentionally keeps proxy data unless `--real-data` is explicit).
+#   Purpose: default source dataset selection.
+#
+# - default_model_params.epochs:
+#   `viva_demo.py` provides YAML fallback for `epochs_override`; then
+#   `viva_pipeline/pipeline.py` resolves final `epochs` used by `train_sdv_models(...)`.
+#   Purpose: baseline synthesis training duration/quality trade-off.
+#
+# - default_model_params.tvae_l2scale:
+#   `viva_demo.py` provides YAML fallback for `tvae_l2scale`; then
+#   `viva_pipeline/pipeline.py` applies it in TVAE kwargs for `train_sdv_models(...)`.
+#   Purpose: TVAE regularization strength.
+#
+# - preflight.drift_tolerance:
+#   `viva_demo.py` maps this to `preflight_ratio_tolerance`; then
+#   `viva_pipeline/pipeline.py` passes it into `run_preflight_validator(..., ratio_tolerance=...)`.
+#   Purpose: Data Governance Gate threshold for class-ratio drift.
+#
+# - profiles.<name>.sample_parity:
+#   `viva_pipeline/pipeline.py` sets `sample_parity_effective`; if true, `n_synth = len(real_df)`.
+#   Purpose: ensure synthetic sample count parity for fair comparisons.
+#
+# - profiles.<name>.constraint_level:
+#   `viva_pipeline/pipeline.py` resolves `constraint_level_effective`; then
+#   `train_sdv_models(...)` and tuning constraints builder use this to enforce moderate/strict constraints.
+#   Purpose: control rule strictness for generation validity.
+#
+# - profiles.<name>.model_params.epochs and profiles.<name>.model_params.tvae_l2scale:
+#   `viva_pipeline/pipeline.py` profile defaults overlay base defaults before CLI overrides.
+#   Purpose: profile-specific behavior (realism/privacy/demo) without changing code.
+#
+# - reporting.confidence_level:
+#   semantic config target for report confidence intervals (95% by default);
+#   exported CI computation is performed in reporting code via `confidence_interval(...)`.
+#   Purpose: standardized statistical confidence reporting in artifacts.
+#
+# How this file is used in code:
+# - `viva_demo.py` loads this YAML and passes values into `run_pipeline(...)`.
+# - `run_pipeline(...)` resolves defaults from this file and applies them unless CLI overrides exist.
+# - This means config values are operational (not just documentation).
+#
+# Why `default_model_params` is TVAE-focused:
+# - TVAE is treated as the primary tunable architecture in baseline mode.
+# - CTGAN/CopulaGAN use shared/default constructor settings unless:
+#   a) profile-level overrides are applied in pipeline code, or
+#   b) Optuna all-SDV tuning mode is enabled (then per-architecture params are learned).
+# - This keeps default config compact while still enabling fair all-model tuning when requested.
+#
+# Core terms in plain language:
+# - Epochs: one full pass of the model over training data.
+#   More epochs = potentially better fit, but longer runtime and higher overfitting risk.
+# - Data Governance Gate (preflight): fail-fast data quality checks before expensive model training.
+# - Profile: a named preset (realism/privacy/demo) that changes SDV behavior for a goal.
+# - Reporting: export settings for confidence intervals and summary artifacts.
+
+# General settings
+# Path to real dataset used when `--real-data` is not explicitly passed.
+data_path: "SCM_Delivery_Promise_Dataset_LATEST.csv"
+# Holdout fraction for train/test style splits where applicable.
+# In this codebase this mainly affects evaluation-style split logic where test fractions are used.
+test_size: 0.2
+# Global deterministic seed used across random components.
+# Keeps results reproducible across reruns (same seed -> similar random sampling behavior).
+random_state: 42
+
+# Model and training parameters
+default_model_params:
+  # Base training epochs fallback (overridden by profile or CLI when provided).
+  # Why 250 here:
+  # - This is a conservative "quality-first" default for non-demo runs.
+  # - Lower values train faster but may underfit generated distributions.
+  # - Higher values may improve fit marginally but increase runtime significantly.
+  # - Real optimal value is dataset/model specific; Optuna can tune around this baseline.
+  epochs: 250
+  # TVAE L2 regularization fallback.
+  # L2 controls how strongly weights are penalized (smaller = weaker regularization).
+  # Why 1e-5:
+  # - Middle-ground default that typically avoids unstable overfitting while preserving utility.
+  # - Realism profile decreases this, privacy profile increases this.
+  tvae_l2scale: 1e-5
+  # Reserved TVAE loss-shaping parameter (documented for future compatibility).
+  # Currently not consumed by training code directly, but retained for forward compatibility.
+  tvae_loss_factor: 0.5
+
+# Data Governance Gate settings (stored under `preflight` for code compatibility)
+preflight:
+  # Allowed absolute drift between observed class ratio and expected ratio.
+  # Mapped to run_preflight_validator(..., ratio_tolerance=...).
+  # Example: with tolerance 0.02, expected 0.54 allows observed 0.52 to 0.56.
+  # Why it matters:
+  # - Prevents training/evaluation on data with materially shifted class balance.
+  # - Protects fairness of TSTR/TRTR and business utility comparisons.
+  drift_tolerance: 0.02
+  # Frozen canonical label distribution for latest raw schema runs.
+  # Delay labels are derived from transit-duration quantile bands:
+  # L0=0-54.42 percentile, L1=54.42-92 percentile, L2=92-100 percentile.
+  # These are used as the reference truth for preflight drift checks.
+  frozen_label_distribution:
+    L0: 0.5442
+    L1: 0.3758
+    L2: 0.0800
+
+# Experiment profiles
+profiles:
+  realism: # prioritize distribution fidelity and utility for decision-grade use cases.
+    # If true, synthetic sample size is forced to real row count.
+    # Helps preserve density/coverage parity versus real data for fidelity-oriented runs.
+    sample_parity: true
+    # Constraint strictness passed to SDV constraint assembly.
+    # `moderate` enforces core constraints but is less restrictive than `strict`.
+    constraint_level: "moderate"
+    model_params:
+      # Profile-specific epoch override.
+      # Realism keeps high epochs for better distribution fit.
+      epochs: 250
+      # Profile-specific TVAE regularization override.
+      # Lower L2 can improve data realism but may weaken privacy.
+      tvae_l2scale: 1e-6
+  privacy: # prioritize stronger privacy constraints and reduced memorization risk.
+    # Privacy profile still uses sample parity for fair metric comparisons.
+    sample_parity: true
+    # Strict constraints reduce invalid rows and enforce stronger rule consistency.
+    constraint_level: "strict"
+    model_params:
+      # Still high epochs to maintain utility while tightening privacy constraints.
+      epochs: 250
+      # Higher L2 generally pushes toward smoother, less memorized synthetic patterns.
+      tvae_l2scale: 5e-5
+  demo: # prioritize speed over exhaustive optimization for quick demonstrations.
+    # Demo profile prioritizes speed over exhaustive optimization.
+    # Useful for presentations and quick sanity checks.
+    sample_parity: true
+    constraint_level: "moderate"
+    model_params:
+      # Lower epochs for fast turnaround in demos.
+      epochs: 50 # Faster for demo
+      tvae_l2scale: 1e-6
+
+# Reporting
+reporting:
+  # Confidence level used in exported interval summaries.
+  # 0.95 means 95% confidence interval is computed for fold-level metrics.
+  # This is used in exported report artifacts for viva defensibility.
+  confidence_level: 0.95
+
+# SDMetrics secondary validation layer
+sdmetrics:
+  # Secondary layer only; does not alter primary pillar verdicts.
+  enabled: false
+  # Row cap per real/synthetic dataset pair to control runtime.
+  sample_size: 2000
+  # Enables pairwise trend details (can be expensive on wide tables).
+  include_column_pairs: true
+
+# -----------------------------------------------------------------------------
+# Recommended presets (copy/paste commands)
+# -----------------------------------------------------------------------------
+# 1) Quick demo (fast sanity check)
+# python viva_demo.py --demo --phase 0 --export-report viva_outputs/preset_demo_quick
+#
+# 2) Real-data decision-grade run (single-architecture tuning path, balanced)
+# Note: uses strict Data Governance Gate checks by default. If the gate fails for exploratory analysis,
+# add `--skip-preflight` explicitly.
+# python viva_demo.py --real-data SCM_Delivery_Promise_Dataset_LATEST.csv \
+#   --validation-strategy temporal --optuna-tune-tvae --optuna-trials 60 \
+#   --epochs 40 --n-synth 5000 --export-report viva_outputs/preset_real_decision_grade
+#
+# 3) Fair all-model comparison run (equal-budget tuning for TVAE/CTGAN/CopulaGAN)
+# Recommended for final model selection across all SDV architectures.
+# python viva_demo.py --real-data SCM_Delivery_Promise_Dataset_LATEST.csv \
+#   --validation-strategy temporal --optuna-tune-all-sdv --optuna-trials 40 \
+#   --epochs 20 --n-synth 5000 --skip-preflight \
+#   --export-report viva_outputs/preset_real_fair_all_model_compare
