@@ -11,13 +11,13 @@ tags:
   - evaluation
 authors:
   - name: Avish Saha
-    orcid: 0000-0000-0000-0000   # TODO: replace with your real ORCID (register free at orcid.org)
+    orcid: 0009-0001-1124-7119
     affiliation: 1
 # TODO: JOSS's "collaborative effort" criterion treats co-authors (advisor,
 # domain collaborators) as evidence of collaborative context for an otherwise
 # single-author project. Discuss with your BITS supervisor before submitting.
 affiliations:
-  - name: "[Affiliation — e.g., adidas India / BITS Pilani — decide how you want to appear]"
+  - name: "[Affiliation — Independent Researcher]"
     index: 1
 date: "[submission date]"
 bibliography: paper.bib
