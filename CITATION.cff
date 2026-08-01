@@ -16,7 +16,7 @@ authors:
     # TODO: replace with your real ORCID (register free at orcid.org)
     orcid: "https://orcid.org/0009-0001-1124-7119"
     # TODO: confirm how you want to appear -- adidas India, BITS Pilani, or both
-    affiliation: "TODO: adidas India / BITS Pilani"
+    affiliation: "Independent Researcher"
 version: 0.1.0
 # TODO: set to the actual date of the tagged GitHub release (YYYY-MM-DD)
 date-released: "2026-08-01"
