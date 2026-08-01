@@ -33,10 +33,10 @@ keywords:
   - logistics
 
 # --- After the first GitHub release, Zenodo mints a DOI. Add it here: ---
-# identifiers:
-#   - type: doi
-#     value: "10.5281/zenodo.TODO"
-#     description: "Archived snapshot of version 0.1.0"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21739329"
+    description: "Concept DOI — always resolves to the latest version"
 
 # --- Once a JOSS paper is accepted, uncomment and fill this in. It tells
 #     citation tools "cite the paper, not just the repository". ---
