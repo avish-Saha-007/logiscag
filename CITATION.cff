@@ -13,12 +13,12 @@ authors:
   - family-names: "Saha"
     given-names: "Avish"
     email: "sahaavish@gmail.com"
-    # TODO: replace with your real ORCID (register free at orcid.org)
+    
     orcid: "https://orcid.org/0009-0001-1124-7119"
-    # TODO: confirm how you want to appear -- adidas India, BITS Pilani, or both
+    
     affiliation: "Independent Researcher"
 version: 0.1.0
-# TODO: set to the actual date of the tagged GitHub release (YYYY-MM-DD)
+
 date-released: "2026-08-01"
 license: Apache-2.0
 repository-code: "https://github.com/avish-Saha-007/logiscag"
