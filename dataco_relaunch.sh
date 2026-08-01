@@ -5,7 +5,7 @@
 #
 # Usage: bash dataco_relaunch.sh
 set -euo pipefail
-REPO="/Users/apple/Downloads/CAG_bundle/synthetic-data-generation"
+REPO="${REPO:-$(git rev-parse --show-toplevel)}"
 cd "$REPO"
 source .venv/bin/activate
 
