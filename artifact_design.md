@@ -99,7 +99,7 @@ logiscag/
 ## 4. Design principles that actually drive adoption
 
 1. **Declarative-first.** Constraints are config a non-ML person can read and write. This is the single biggest adoption lever — it opens the tool to governance teams, not just engineers.
-2. **A schema-mapping layer.** A small mapping config (`schema_mapping.py`) lets the same constraints apply across *different* companies' logistics schemas. Cross-schema portability is what turns "Avish's Adidas tool" into "the industry's logistics-synthesis tool." Demonstrate it working on three schemas (your corpus + SynDelay + DataCo).
+2. **A schema-mapping layer.** A small mapping config (`schema_mapping.py`) lets the same constraints apply across *different* companies' logistics schemas. Cross-schema portability is what turns this codebase into "the industry's logistics-synthesis tool." Demonstrate it working on three schemas (your corpus + SynDelay + DataCo).
 3. **The report card as the product.** Practitioners adopt what produces something they can *show someone*. A clean pass/fail one-pager is more adoptable than any API.
 4. **Compose, don't replace.** Wrapping SDV (not forcing a new generator) drops the switching cost to near zero.
 5. **Five-minute quickstart on public data.** If `pip install` → first report card takes more than a coffee, adoption dies. Optimize that path ruthlessly.
