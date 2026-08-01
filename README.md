@@ -3,8 +3,7 @@
 [![tests](https://github.com/avish-Saha-007/logiscag/actions/workflows/tests.yml/badge.svg)](https://github.com/avish-Saha-007/logiscag/actions/workflows/tests.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-<!-- TODO: paste the Zenodo DOI badge here after the first GitHub release -->
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21739329.svg)](https://doi.org/10.5281/zenodo.21739329)
 A constraint-validated benchmark and toolkit for operationally-valid synthetic
 supply-chain data: a declarative constraint library of last-mile denial
 constraints, a generator-agnostic Constraint-Augmented Generation (CAG)
@@ -205,8 +204,8 @@ If you use this software, please cite it. Machine-readable metadata is in
 [`CITATION.cff`](CITATION.cff); GitHub renders a "Cite this repository" button
 from it.
 
-<!-- TODO: once the first release is archived, add the Zenodo DOI here.
-     Once a JOSS paper is accepted, cite that in preference. -->
+Archived releases are on Zenodo: [10.5281/zenodo.21739329](https://doi.org/10.5281/zenodo.21739329)
+(concept DOI — always resolves to the latest version).
 
 ## License
 
