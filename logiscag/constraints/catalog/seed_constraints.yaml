@@ -1,7 +1,11 @@
 # Seed constraint catalog, declared so a compliance/governance reader can audit
-# each rule without reading Python. SEVEN entries, mapping to the seven checks
-# audit_constraints() emits. The paper's Appendix C specifies eight rules; see
-# the R1 note below and KNOWN_ISSUES.md finding 7 for why the counts differ.
+# each rule without reading Python. EIGHT entries, mapping to the eight checks
+# audit_constraints() emits, and to the eight rules the paper's Appendix C
+# specifies. The counts agreed only from 2026-08-16 onward: before that this
+# catalog had seven entries, because the non-negativity half of the paper's R4
+# had no executable check anywhere (KNOWN_ISSUES.md finding 7, now closed).
+# The catalog ids below follow the PAPER's R1-R8 numbering; audit_constraints()
+# uses a different one. README.md carries the mapping table between them.
 #
 # `audit_key` names the actual key in pipeline.constraints.audit_constraints()'s
 # output dict that the engine pulls a violation count from -- the catalog
@@ -24,12 +28,19 @@
   audit_key: R1_temporal_order
   notes: >
     Paper's Appendix C groups this with R4 (promise-date ordering) under one
-    audit key. The ordering half of R4 is folded in here. The non-negativity
-    half of R4 (promised_transit_days >= 0) was CONFIRMED 2026-07-27 to be
-    checked NOWHERE -- not in audit_constraints, not in build_sdv_constraints,
-    not in cag_rejection_filter. This is why the catalog enumerates seven
-    entries while the paper specifies eight rules. See KNOWN_ISSUES.md
-    finding 7; a decision is required before publication.
+    audit key. The ordering half of R4 is folded in here, and remains so.
+    .
+    Its non-negativity half (promised_transit_days >= 0) had no audit check at
+    all, which is why this catalog used to enumerate seven entries against the
+    paper's eight rules. (The 2026-07-27 note here said it was checked
+    "NOWHERE"; that overstated it -- build_sdv_constraints did declare it, but
+    inertly. See KNOWN_ISSUES.md finding 7.) That gap was CLOSED 2026-08-16:
+    it is now its own catalog entry
+    (R4_promised_transit_non_negative, audit key
+    RPT_non_negative_promised_transit) and its own check in
+    audit_constraints(). KNOWN_ISSUES.md finding 7 is resolved accordingly.
+    Note that the two halves of the paper's R4 are therefore checked in two
+    different places -- ordering here, sign there.
 
 - id: R2_positive_transit
   name: Positive transit duration
@@ -66,6 +77,59 @@
     this rule still never fires for the published Table 1 numbers -- the fix
     is a no-op on this benchmark by data construction, not by the rule being
     toothless. See KNOWN_ISSUES.md finding 3 for the history.
+
+- id: R4_promised_transit_non_negative
+  name: Non-negative promised transit window
+  category: arithmetic
+  type: hard
+  predicate: "promised_transit_days >= 0"
+  forbids: "a promised delivery date earlier than its own promised shipment date, i.e. a negative promised transit window"
+  severity: high
+  on_violation: flag
+  tolerance_days: 0
+  rationale: "A carrier cannot be promised to deliver before it is promised to ship. A negative promised window is not a late order, it is an incoherent commitment, and any SLA arithmetic derived from it (sla_buffer, and therefore delay_label) is meaningless."
+  audit_key: RPT_non_negative_promised_transit
+  notes: >
+    ADDED 2026-08-16, closing KNOWN_ISSUES.md finding 7. This is the
+    non-negativity half of the paper's Appendix C R4; it previously had no
+    AUDIT check, which is why this catalog enumerated seven entries against
+    the paper's eight rules. R4's OTHER half (promised
+    shipment precedes promised delivery, as an ordering predicate over the
+    date columns) remains folded into R1_temporal_ordering's chain -- the two
+    halves are checked in two places, deliberately, because the ordering half
+    is a date comparison and this one is a derived-column sign test.
+    .
+    audit_key is `RPT_`, not `R4_`: the audit-key namespace already spends
+    `R4_` on referential integrity — the rule this catalog calls R5. The three
+    numbering schemes (paper Appendix C, these catalog ids, audit keys) do not
+    agree; README.md carries the mapping table.
+    .
+    on_violation is `flag`, not `reject`, even though type is `hard`: the check
+    is AUDIT-LAYER ONLY. It counts toward total_hard_violations, but no row is
+    actually dropped or constrained on its account. cag_rejection_filter() does
+    not check it. build_sdv_constraints() does declare it (as a ScalarInequality
+    at the moderate/strict tiers, via _NONNEG_SCALARS -- it is NOT missing
+    there), but per KNOWN_ISSUES.md finding 1 the installed SDV silently drops
+    dict-style constraints, so that declaration currently enforces nothing.
+    Making it bite requires finding 1's sdv.cag rewrite, which is out of scope
+    here.
+    .
+    Verified against the real DataCo benchmark, measured not assumed: 0
+    violations across all 180,519 canonical rows, so adding this rule moves no
+    published number. The zero holds for two independent reasons. (a) By
+    construction: the adapter derives date_promise_delivery as
+    date_promise_shipment plus a scheduled-days offset passed through
+    clip(lower=0), so a negative window is unreachable whatever the input. (b)
+    By the upstream data: DataCo's raw "Days for shipment (scheduled)" column
+    takes only the values {0, 1, 2, 4} with no nulls, so the clip in (a) never
+    actually has anything to absorb on this benchmark.
+    .
+    BOUNDARY WARNING for anyone porting this rule to another schema: 9,737 of
+    the 180,519 real rows sit exactly on the boundary at
+    promised_transit_days == 0 (a same-day promise, which is legitimate). The
+    predicate is >= 0, per the paper. Writing it as > 0 -- by analogy with R2,
+    whose predicate genuinely is strict -- would report those 9,737 valid rows
+    as violations and inflate the real-data hard CVR by ~5.4 points.
 
 - id: R5_referential_carrier_integrity
   name: Referential carrier/service integrity

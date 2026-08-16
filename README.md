@@ -152,24 +152,41 @@ no existing implementation to delegate to.
 
 ### Constraint coverage — read this before citing rule counts
 
-`audit_constraints()` emits **seven** executable checks:
+`audit_constraints()` emits **eight** executable checks:
 
-| Audit key | Catalog id | Type |
-|---|---|---|
-| `R1_temporal_order` | `R1_temporal_ordering` | hard |
-| `R2_positive_transit` | `R2_positive_transit` | hard |
-| `R3_non_negative_capture_latency` | `R3_non_negative_capture_latency` | hard |
-| `R3b_label_sla_consistency` | `R7_label_sla_consistency` | hard |
-| `R4_referential_integrity` | `R5_referential_carrier_integrity` | hard |
-| `R5_label_cardinality` | `R6_label_cardinality` | hard |
-| `R6_scac_calendar_soft` | `R8_carrier_calendar_plausibility` | soft |
+| Audit key | Catalog id | Paper rule | Type |
+|---|---|---|---|
+| `R1_temporal_order` | `R1_temporal_ordering` | R1 + ordering half of R4 | hard |
+| `R2_positive_transit` | `R2_positive_transit` | R2 | hard |
+| `R3_non_negative_capture_latency` | `R3_non_negative_capture_latency` | R3 | hard |
+| `RPT_non_negative_promised_transit` | `R4_promised_transit_non_negative` | non-negativity half of R4 | hard |
+| `R4_referential_integrity` | `R5_referential_carrier_integrity` | R5 | hard |
+| `R5_label_cardinality` | `R6_label_cardinality` | R6 | hard |
+| `R3b_label_sla_consistency` | `R7_label_sla_consistency` | R7 | hard |
+| `R6_scac_calendar_soft` | `R8_carrier_calendar_plausibility` | R8 | soft |
 
-The paper's Appendix C specifies eight rules (R1–R8). Seven map to executable
-checks as above. The ordering half of the paper's R4 (promise-ship precedes
-promise-delivery) is folded into `R1_temporal_order`; its non-negativity half
-(`promised_transit_days >= 0`) is **not currently checked anywhere**. The
-catalog ids and the audit keys also use different numbering, which is why the
-table above exists. See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md).
+Three numbering schemes are in play and **they do not agree** — the paper's
+Appendix C (R1–R8), the catalog ids, and `audit_constraints()`'s output keys.
+That is why this table exists; it is the authoritative decoder. Two traps in
+particular:
+
+- `R4_referential_integrity` (audit key) is the rule the paper and catalog
+  number **R5**, not R4.
+- `RPT_non_negative_promised_transit` is the second half of the **paper's R4**.
+  Its name avoids any numeric prefix that could suggest a hierarchical
+  relationship to `R4_referential_integrity`.
+
+The paper's R4 is the only rule split across two checks: its ordering half
+(promise-ship precedes promise-delivery) is folded into `R1_temporal_order`'s
+date chain, and its non-negativity half (`promised_transit_days >= 0`) is
+`R4b`. That non-negativity half had no executable check anywhere until
+2026-08-16; the catalog enumerated seven entries against the paper's eight
+rules until then. See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) finding 7.
+
+`R4b` is audit-layer only: it counts toward `total_hard_violations`, but
+neither `cag_rejection_filter()` nor `build_sdv_constraints()` enforces it, so
+no row is dropped on its account. It measures 0 violations on all 180,519 real
+DataCo rows, so it moves no published number.
 
 ## Tests
 

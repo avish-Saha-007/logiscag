@@ -12,13 +12,38 @@ from pipeline.constraints import (
 
 
 def test_catalog_loads_all_eight_seed_entries():
+    """Eight entries, one per rule in the paper's Appendix C. This was 7 until
+    2026-08-16, when the non-negativity half of the paper's R4 got its first
+    executable check (KNOWN_ISSUES.md finding 7). If this count drops back to
+    7, the catalog has silently stopped enumerating a rule the paper claims."""
     catalog = logiscag.constraints.load_catalog()
     ids = {c["id"] for c in catalog}
-    assert len(catalog) == 7  # R1+R4 grouped under one audit key, per Appendix C's own note
+    assert len(catalog) == 8
     assert "R1_temporal_ordering" in ids
+    assert "R4_promised_transit_non_negative" in ids
     assert "R8_carrier_calendar_plausibility" in ids
+    # The paper numbers its rules R1..R8; the catalog ids must cover that range
+    # exactly once each, with no gap of the kind R4 used to be.
+    assert sorted(i.split("_")[0] for i in ids) == [f"R{n}" for n in range(1, 9)]
     for entry in catalog:
         assert entry["audit_key"], f"{entry['id']} must declare an audit_key"
+
+
+def test_catalog_audit_keys_are_unique_and_all_resolve():
+    """Guards the numbering hazard that made R4b's key awkward in the first
+    place: three disagreeing numbering schemes (paper ids, catalog ids, audit
+    keys). Two entries sharing an audit_key would silently report the same
+    violation count twice; an audit_key that no longer exists in
+    audit_constraints()'s output would silently report zero forever."""
+    catalog = logiscag.constraints.load_catalog()
+    keys = [c["audit_key"] for c in catalog]
+    assert len(keys) == len(set(keys)), f"duplicate audit_key in catalog: {keys}"
+
+    df = generate_proxy_dataset(n=50, seed=11)
+    with pytest.warns(UserWarning, match="valid_combos"):
+        report = audit_constraints(df, verbose=False)
+    missing = [k for k in keys if k not in report]
+    assert not missing, f"catalog audit_keys absent from audit_constraints output: {missing}"
 
 
 def test_catalog_audit_delegates_to_audit_constraints_not_reimplements():
@@ -187,6 +212,133 @@ def test_catalog_threads_valid_combos_through_to_audit_constraints():
     report = logiscag.constraints.run_catalog_audit(synth_df, valid_combos=valid_combos)
     r5_row = next(r for r in report if r["id"] == "R5_referential_carrier_integrity")
     assert r5_row["violations"] == 1  # the (UPS, XG) row is unseen in valid_combos
+
+
+# ---------------------------------------------------------------------------
+# Fix 3: R4b non-negative promised transit (KNOWN_ISSUES.md finding 7)
+# ---------------------------------------------------------------------------
+
+R4B_KEY = "RPT_non_negative_promised_transit"  # Promised Transit non-negativity
+
+
+def test_r4b_negative_promised_transit_violates_and_counts_as_hard():
+    """The check finding 7 says existed nowhere. One clean row, one row whose
+    promised delivery precedes its own promised shipment."""
+    df = _baseline_df(n=2, promised_transit_days=[3.0, -1.5])
+    with pytest.warns(UserWarning, match="valid_combos"):  # R5 fallback, irrelevant here
+        report = audit_constraints(df, verbose=False)
+    assert report[R4B_KEY] == 1
+    # Must be HARD, not informational: the key deliberately contains neither
+    # "soft" nor "_info", which is what folds it into total_hard_violations.
+    # CONTRIBUTING.md calls out getting this wrong as a silent failure mode.
+    assert report["total_hard_violations"] >= 1
+
+
+def test_r4b_zero_and_positive_promised_transit_do_not_violate():
+    """Boundary: the predicate is >= 0 per the paper, so a same-day promise
+    (0.0) is VALID. Only a strictly negative window is incoherent.
+
+    This is not a pedantic edge case: 9,737 of the 180,519 real DataCo rows sit
+    exactly on 0.0. Tightening this to > 0 -- by false analogy with R2, whose
+    predicate genuinely is strict -- would report all 9,737 as violations and
+    inflate the real-data hard CVR by ~5.4 points."""
+    df = _baseline_df(n=3, promised_transit_days=[0.0, 0.5, 10.0])
+    with pytest.warns(UserWarning, match="valid_combos"):
+        report = audit_constraints(df, verbose=False)
+    assert report[R4B_KEY] == 0
+
+
+def test_r4b_treats_unknown_promised_transit_as_non_violating():
+    """NaN/unparseable is not a violation, matching R3's treatment of unknowns:
+    an unmeasurable promise window is not evidence of a bad one. Guards against
+    a future refactor that inverts the mask (`~(x >= 0)` would count NaN)."""
+    df = _baseline_df(n=3, promised_transit_days=[float("nan"), None, "not-a-number"])
+    with pytest.warns(UserWarning, match="valid_combos"):
+        report = audit_constraints(df, verbose=False)
+    assert report[R4B_KEY] == 0
+
+
+def test_r4b_absent_column_omits_the_key_entirely():
+    """The DISSERTATION schema has no promise columns. The check is
+    presence-guarded, so the key must be absent rather than a misleading 0 --
+    and audit_constraints must not raise."""
+    df = _baseline_df(n=1)
+    assert "promised_transit_days" not in df.columns
+    with pytest.warns(UserWarning, match="valid_combos"):
+        report = audit_constraints(df, verbose=False)
+    assert R4B_KEY not in report
+
+
+def test_r4b_key_does_not_collide_with_referential_integrity_key():
+    """The audit-key namespace already spends `R4_` on referential integrity
+    (the rule the PAPER numbers R5). R4b must be a distinct key carrying a
+    distinct count, not an overwrite of it."""
+    df = _baseline_df(n=2, promised_transit_days=[-1.0, -2.0], last_scac=["DHL", ""])
+    with pytest.warns(UserWarning, match="valid_combos"):
+        report = audit_constraints(df, verbose=False)
+    assert report[R4B_KEY] == 2
+    assert report["R4_referential_integrity"] == 1
+
+
+def test_r4b_catalog_entry_delegates_and_declares_audit_only_enforcement():
+    """The catalog entry must describe what the code actually does: a hard rule
+    that is counted but never enforced (no cag_rejection_filter / SDV wiring).
+    Describing it as `reject` would be the exact catalog-vs-code drift the
+    catalog exists to prevent."""
+    catalog = logiscag.constraints.load_catalog()
+    entry = next(c for c in catalog if c["id"] == "R4_promised_transit_non_negative")
+    assert entry["audit_key"] == R4B_KEY
+    assert entry["type"] == "hard"
+    assert entry["on_violation"] == "flag"
+    assert "AUDIT-LAYER ONLY" in entry["notes"]
+
+    synth_df = _baseline_df(n=4, promised_transit_days=[1.0, -1.0, -2.0, 0.0])
+    with pytest.warns(UserWarning, match="valid_combos"):
+        report = logiscag.constraints.run_catalog_audit(synth_df)
+    row = next(r for r in report if r["id"] == "R4_promised_transit_non_negative")
+    assert row["violations"] == 2
+    assert row["violation_rate_pct"] == 50.0
+
+
+def test_r4b_not_wired_into_generation_path_as_documented():
+    """Pins the documented SCOPE of this fix. If someone later wires the rule
+    into cag_rejection_filter or build_sdv_constraints, that is a welcome
+    change -- but the catalog note and KNOWN_ISSUES.md finding 7 claim it is
+    audit-only, and those claims must be updated in the same commit."""
+    from pipeline.constraints import cag_rejection_filter
+
+    df = _baseline_df(n=2, promised_transit_days=[1.0, -5.0])
+    kept = cag_rejection_filter(df)
+    assert len(kept) == 2, (
+        "cag_rejection_filter now drops negative-promised-transit rows -- update "
+        "the R4_promised_transit_non_negative catalog note (on_violation, and the "
+        "AUDIT-LAYER ONLY paragraph) and KNOWN_ISSUES.md finding 7 to match"
+    )
+
+
+def test_r4b_dataco_promise_derivation_makes_it_a_noop_by_construction():
+    """Documents WHY the real-data count is 0 on the DataCo benchmark, so the
+    zero reads as a property of the adapter rather than as a toothless rule.
+    dataco_to_canonical sets date_promise_shipment = shipping date and
+    date_promise_delivery = shipping date + scheduled_days.clip(lower=0), so
+    promised_transit_days is a clipped non-negative offset by construction.
+    This reproduces that derivation and asserts the rule cannot fire on it,
+    including for the negative raw scheduled-days input the clip absorbs.
+
+    Measured on the real 180,519-row canonical dataset: 0 violations. Note the
+    clip is belt-and-braces there -- DataCo's raw scheduled-days column only
+    ever holds {0, 1, 2, 4}, so it has no negatives for the clip to absorb. The
+    -3.0 input below is therefore synthetic, exercising the clip on input the
+    real benchmark never supplies."""
+    ship = pd.to_datetime(["2026-01-02"] * 4)
+    raw_scheduled_days = pd.Series([0.0, 2.0, 6.0, -3.0])  # last one: clip absorbs it
+    promise_delivery = ship + pd.to_timedelta(raw_scheduled_days.clip(lower=0), unit="D")
+    promised_transit = (promise_delivery - ship).dt.total_seconds() / 86400.0
+
+    df = _baseline_df(n=4, promised_transit_days=list(promised_transit))
+    with pytest.warns(UserWarning, match="valid_combos"):
+        report = audit_constraints(df, verbose=False)
+    assert report[R4B_KEY] == 0
 
 
 def test_custom_constraint_decorator_registers_and_audits():

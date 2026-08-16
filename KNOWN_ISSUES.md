@@ -242,35 +242,92 @@ inside `audit_constraints` already used `.isna() |` and was never affected.
 **Verified** by the existing regression test, which now passes; the full suite
 is green on pandas 3.0.2 / numpy 1.26.4.
 
-## 7. Paper's R4 non-negativity half is not checked anywhere (open)
+## 7. Paper's R4 non-negativity half was not checked anywhere (fixed)
 
-**Status.** Open — documentation/coverage gap, not a regression.
+**Status.** Resolved 2026-08-16 via option 1 below — the check is implemented,
+so the paper's "eight rules" claim now holds. Audit layer only.
 
-The paper's Appendix C specifies eight rules. `audit_constraints()` emits seven
-executable checks. The ordering half of the paper's R4 (promise-ship precedes
-promise-delivery) is enforced inside `R1_temporal_order`. Its **non-negativity
-half — `promised_transit_days >= 0` — has no corresponding check** in
-`audit_constraints`, `build_sdv_constraints`, or `cag_rejection_filter`.
+**What was wrong.** The paper's Appendix C specifies eight rules;
+`audit_constraints()` emitted seven. The ordering half of the paper's R4
+(promise-ship precedes promise-delivery) is enforced inside `R1_temporal_order`.
+Its **non-negativity half — `promised_transit_days >= 0` — had no audit check**,
+so it was invisible to every CVR figure and to the catalog.
 
-This was flagged as unconfirmed in the seed catalog's `R1` note ("whether the
-non-negativity half of R4 is independently checked anywhere in
-`audit_constraints` was not confirmed during packaging"). It has now been
-confirmed: it is not.
+**Correction to this finding's earlier wording.** The 2026-07-27 entry claimed
+the rule was checked "NOWHERE -- not in `audit_constraints`, not in
+`build_sdv_constraints`, not in `cag_rejection_filter`." The
+`build_sdv_constraints` part of that claim is **false**, verified 2026-08-16 by
+calling it directly: `_NONNEG_SCALARS` has always contained
+`("promised_transit_days", 0.0)`, and `build_sdv_constraints` emits it as a
+`ScalarInequality` at the `moderate` and `strict` tiers (constraint counts 8 and
+9 respectively on DataCo; absent at `none`/`temporal`, correctly, since that tier
+predates the arithmetic block). The accurate statement of the original gap is:
 
-Three numbering schemes are also in play — the paper's Appendix C (R1–R8), the
-catalog's own ids, and `audit_constraints`'s output keys — and they do not
-agree. `README.md` carries the mapping table.
+- **`audit_constraints`** — genuinely absent. This was the real coverage gap, and
+  is what the fix closes.
+- **`cag_rejection_filter`** — genuinely absent. Still absent; out of scope here.
+- **`build_sdv_constraints`** — *present* since before packaging, but per
+  finding 1 its dict-style constraints are silently filtered out by the
+  installed SDV, so the rule was declared-but-not-enforced rather than missing.
 
-**Decision needed before submission.** Either:
+The practical upshot is unchanged — nothing was *effectively* enforcing the rule,
+and nothing was reporting on it — but "not expressed in the generation path" was
+the wrong diagnosis, and anyone rewriting `build_sdv_constraints` to the
+`sdv.cag` object API (finding 1's recommended follow-up) will find this rule
+already there and should not add it twice.
 
-1. implement the missing check, add a catalog entry, and keep the paper's
-   "eight rules" claim; or
-2. keep seven executable checks and correct the paper, `CITATION.cff`, and the
-   package docstring to describe seven, with the R4 fold-in stated explicitly.
+**Fix.** `audit_constraints()` now emits an eighth check under the audit key
+`RPT_non_negative_promised_transit`, with a matching catalog entry
+`R4_promised_transit_non_negative` (which fills the R4 slot the catalog-id
+namespace had left vacant, bringing the catalog to eight entries against the
+paper's eight rules). Presence-guarded, so the promise-column-less DISSERTATION
+schema is unaffected; NaN is not counted as a violation, matching R3's treatment
+of unmeasurable values. R4's ordering half remains in `R1_temporal_order`, so
+the paper's R4 is the one rule deliberately split across two checks.
 
-Option 1 is the smaller change to the prose and the larger change to the code;
-option 2 is the reverse. Either is defensible — what is not defensible is
-shipping a paper that claims eight while the catalog enumerates seven.
+**Key naming.** `RPT_`, not `R4_`, because the audit-key namespace already
+spends `R4_` on referential integrity — the rule the paper and catalog both
+number R5. The clear separation eliminates any confusion about hierarchical
+relationship. Verified by test that the two keys carry distinct counts and that
+no two catalog entries share an `audit_key`.
+
+**Scope.** Audit layer only, matching the finding-4 fix. The rule counts toward
+`total_hard_violations`, but nothing drops or constrains a row on its account:
+`cag_rejection_filter()` does not check it, and `build_sdv_constraints()`'s
+declaration of it is inert on the installed SDV (finding 1). The catalog entry
+therefore declares `type: hard` with `on_violation: flag`, and a test pins that
+scope so wiring it into the rejection path later forces these docs to be updated
+in the same commit. `build_sdv_constraints` was left untouched deliberately —
+the rule is already declared there, and making that declaration actually bite
+requires finding 1's `sdv.cag` rewrite, not a change to this rule.
+
+**Verified a no-op on real data by measurement, not assumption.** Run against
+the authoritative upstream CSV (Mendeley Data DOI
+[10.17632/8gx2fvg2k6.3](https://data.mendeley.com/datasets/8gx2fvg2k6/3),
+SHA-256 `fa6d022e…80aa6` verified against the published hash) through
+`dataco_to_canonical`: **0 violations across all 180,519 canonical rows.** The
+zero holds for two independent reasons — (a) the adapter derives
+`date_promise_delivery` as `date_promise_shipment` plus a `clip(lower=0)`
+scheduled-days offset, making a negative window structurally unreachable, and
+(b) DataCo's raw `Days for shipment (scheduled)` column holds only `{0, 1, 2, 4}`
+with no nulls, so the clip in (a) never has anything to absorb here. No
+published number moves: `total_hard_violations` on real canonical data stays at
+5,080 and `violation_rate_pct` at 2.8141% (both entirely R2's zero-transit
+same-day rows, pre-`deterministic_repair`), and Table 1's `cvr` comes from the
+separate, narrower `integrity_check_synthetic()`, which this fix does not touch.
+
+**Boundary note for anyone porting the rule.** 9,737 of the 180,519 real rows
+sit exactly on `promised_transit_days == 0` — a legitimate same-day promise. The
+predicate is `>= 0`, per the paper. Writing it as `> 0` by false analogy with
+R2 (whose predicate genuinely is strict) would flag all 9,737 valid rows and
+inflate the real-data hard CVR by ~5.4 points. Regression-tested.
+
+**Still open, separately:** the three numbering schemes — the paper's Appendix C
+(R1–R8), the catalog's ids, and `audit_constraints`'s output keys — still do not
+agree, and `R4b` adds one more asymmetry to decode. `README.md`'s mapping table
+is the authoritative decoder and now lists all three columns per rule. Genuinely
+unifying the schemes would be a breaking change to every `audit_key` and is not
+attempted here.
 
 ## 8. Middle strictness tiers show identical metrics on the verification path
 

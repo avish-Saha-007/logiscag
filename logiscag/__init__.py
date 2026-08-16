@@ -20,17 +20,41 @@ the rationale and the trade-offs.
 KNOWN CODE<->PAPER GAPS (flagged per the paper's own appendices; not silently
 fixed -- see KNOWN_ISSUES.md for full detail and recommended resolutions):
 
-0. RESOLVED 2026-07-27 (confirmed, was open in finding 1's note): the paper's
-   Appendix C specifies eight rules (R1-R8); `audit_constraints` emits SEVEN
-   executable checks. The ordering half of the paper's R4 is folded into
-   `R1_temporal_order`; its non-negativity half (`promised_transit_days >= 0`)
-   is NOT checked anywhere -- not in `audit_constraints`, not in
-   `build_sdv_constraints`, not in `cag_rejection_filter`. Three numbering
-   schemes are also in play (paper Appendix C, catalog ids, audit keys) and
-   they do not agree; README.md carries the mapping table. A decision is
-   required before publication: implement the missing check and keep the
-   "eight rules" claim, or correct the prose to describe seven. See
-   KNOWN_ISSUES.md finding 7.
+0. RESOLVED 2026-08-16 (confirmed open 2026-07-27, now closed by implementing
+   the missing check): the paper's Appendix C specifies eight rules (R1-R8) and
+   `audit_constraints` now emits EIGHT executable checks. Previously it emitted
+   seven, because the non-negativity half of the paper's R4
+   (`promised_transit_days >= 0`) had no audit check. It now has its own check
+   (audit key `RPT_non_negative_promised_transit`) and its own catalog entry
+   (`R4_promised_transit_non_negative`). R4's ordering half remains folded into
+   `R1_temporal_order`, so the paper's R4 is the one rule split across two
+   checks.
+
+   Note the 2026-07-27 wording of this item ("checked nowhere -- not in
+   `audit_constraints`, not in `build_sdv_constraints`, not in
+   `cag_rejection_filter`") was wrong about `build_sdv_constraints`: that
+   function has always emitted `promised_transit_days >= 0` as a
+   `ScalarInequality` at the `moderate`/`strict` tiers via `_NONNEG_SCALARS`.
+   Per finding 6 below, those dict-style constraints are silently dropped by the
+   installed SDV, so the rule was declared-but-inert there rather than absent.
+   Genuinely absent from `audit_constraints` (now fixed) and from
+   `cag_rejection_filter` (still absent, out of scope).
+
+   Scope: audit layer only, matching the R3/R5 fixes below. The rule counts
+   toward `total_hard_violations` but nothing rejects or constrains on it.
+   Verified a no-op on DataCo by measurement, not assumption: 0 violations
+   across all 180,519 canonical rows, for two independent reasons -- the
+   adapter clips the scheduled-days offset at 0, and DataCo's raw
+   scheduled-days column holds only {0, 1, 2, 4} to begin with. So no published
+   number moves. Note 9,737 real rows sit exactly on the 0 boundary, so the
+   `>= 0` predicate (per the paper) matters: a strict `> 0` would falsely flag
+   all of them.
+
+   Three numbering schemes remain in play (paper Appendix C, catalog ids, audit
+   keys) and they still do not agree; README.md carries the mapping table, and
+   it is the authoritative decoder. In particular `R4_referential_integrity`
+   (audit key) is the paper's R5, and `R4b_...` is the paper's R4 -- not a
+   sub-rule of `R4_referential_integrity`. See KNOWN_ISSUES.md finding 7.
 
 1. Paper Appendices D and E (adapter spec/commands, metric definitions incl.
    the BUS formula) are listed in the paper's appendix index but their bodies

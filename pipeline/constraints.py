@@ -79,6 +79,7 @@ def audit_constraints(df: pd.DataFrame, verbose: bool = True, valid_combos: set 
             {
                 "R1_temporal_order": 0,
                 "R2_positive_transit": 0,
+                "RPT_non_negative_promised_transit": 0,
                 "R3_non_negative_capture_latency": 0,
                 "R4_referential_integrity": 0,
                 "R5_label_cardinality": 0,
@@ -116,6 +117,28 @@ def audit_constraints(df: pd.DataFrame, verbose: bool = True, valid_combos: set 
 
     r2 = pd.to_numeric(df["transit_duration_days"], errors="coerce") <= 0
     report["R2_positive_transit"] = int(r2.sum())
+
+    # RPT (Promised Transit non-negativity): non-negative promised transit -- the
+    # non-negativity half of the paper's Appendix C R4. R4's other half
+    # (promise_ship <= promise_delivery) is folded into R1's chain above; this
+    # half had no AUDIT check until 2026-08-16 (KNOWN_ISSUES.md finding 7). It
+    # is declared in build_sdv_constraints' _NONNEG_SCALARS at the moderate/strict
+    # tiers, but inertly -- finding 1. cag_rejection_filter still does not check
+    # it, so this rule is counted but never enforced; the catalog entry says so
+    # explicitly.
+    #
+    # Key naming: RPT avoids any numeric prefix collision. The paper's R4 is
+    # split between R1_temporal_order (ordering half) and here (non-negativity
+    # half). The mapping table in README.md is the authoritative decoder for all
+    # three numbering schemes (paper R1–R8, catalog ids, audit keys).
+    #
+    # Presence-guarded because the DISSERTATION schema has no promise columns
+    # (pipeline.data sets this to NaN there). NaN is not counted as a violation
+    # -- `NaN < 0` is False -- matching R3's treatment of unknowns: an
+    # unmeasurable promise window is not evidence of a bad one.
+    if "promised_transit_days" in df.columns:
+        r4b = pd.to_numeric(df["promised_transit_days"], errors="coerce") < 0
+        report["RPT_non_negative_promised_transit"] = int(r4b.sum())
 
     # R3: hard, with a clock-skew tolerance (CAPTURE_LATENCY_TOLERANCE_DAYS).
     # capture_latency_days is no longer a model feature, but it is a genuine
