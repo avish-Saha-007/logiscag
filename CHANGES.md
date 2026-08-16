@@ -1,5 +1,24 @@
 # Strictness-ladder + sweep harness — change log
 
+## v0.2.0 — 2026-08-16
+
+- Removed 6 files not meant for public release: `calibration_batch.py`,
+  `config.yaml`, `dataco_combine_results.py`, `dataco_postprocess.sh`,
+  `dataco_relaunch.sh` (orchestration/debugging scripts from producing paper
+  results), and `artifact_design.md` (internal planning doc).
+- Renamed the audit key `R4b_non_negative_promised_transit` ->
+  `RPT_non_negative_promised_transit` to eliminate numeric-prefix confusion
+  with `R4_referential_integrity`; verified zero stale references remain in
+  code.
+- Removed `viva_demo.py` (a dissertation-demo-only backward-compatibility
+  shim, no longer needed); updated `tests/test_metrics.py` to import directly
+  from the `pipeline` package facade instead.
+- Converted `tests/test_constraint_ladder.py` from a standalone script with
+  zero pytest-discoverable tests into 6 real `test_*` functions covering the
+  strictness ladder's monotonic construction.
+- Full test suite now passes end-to-end with zero exclusions: 57/57, for the
+  first time in the project's test history.
+
 ## What changed and why
 Your `train_sdv_models` built SDV constraints **inline**, and that block only
 distinguished `none` vs `moderate=strict` — so the strictness sweep had no real

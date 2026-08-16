@@ -88,6 +88,12 @@ facade for `viva_demo.py` and tests" -- the shim file itself was simply
 missing from this bundle. All 12 names `test_metrics.py` imports from `viva_demo`
 were already present in `pipeline/__init__.py`'s facade.
 
+**Update (v0.2.0, 2026-08-16):** superseded by a cleaner fix. `viva_demo.py`
+was a dissertation-demo-only backward-compatibility shim, no longer needed, and
+has been removed entirely. `tests/test_metrics.py` now imports the same 12
+names directly from the `pipeline` package facade instead of going through the
+shim.
+
 ## 4. R3 (capture latency) and R5 (referential carrier integrity) audit-level code<->paper mismatches
 
 **Status:** both resolved in `audit_constraints()` (2026-06-30), ahead of the
@@ -328,6 +334,13 @@ agree, and `R4b` adds one more asymmetry to decode. `README.md`'s mapping table
 is the authoritative decoder and now lists all three columns per rule. Genuinely
 unifying the schemes would be a breaking change to every `audit_key` and is not
 attempted here.
+
+**Update (v0.2.0, 2026-08-16):** the audit key itself has been renamed,
+`R4b_non_negative_promised_transit` -> `RPT_non_negative_promised_transit`, to
+remove the numeric-prefix confusion with `R4_referential_integrity` specifically
+called out above. Verified zero stale references to the old key remain in
+code. This does not resolve the broader three-scheme mismatch noted above,
+which remains open.
 
 ## 8. Middle strictness tiers show identical metrics on the verification path
 
