@@ -70,8 +70,16 @@ These choices matter because the output is an *audit* — a claim about what a d
        (Table 1 numbers) rather than describing it in the abstract.
      - Any presentation, viva, internal adidas use, or request from another
        group — each is a "community-readiness signal" JOSS names explicitly.
-     - Do NOT cite the p-value from Sec 5.3 until it has been regenerated from
-       the corrected pipeline (0.98 vs the 0.84 currently written). -->
+     - The Sec 5.3 p-value has been regenerated and verified: TVAE's
+       DCR-vs-strictness significance (none vs strict+reject, 5 seeds, paired
+       ttest_rel, public DataCo benchmark) is p = 0.1337, sourced to
+       outputs/finding5_tvae_verify/ (2026-08-23). The previously drafted
+       0.84 and a later "corrected" 0.98 were both unsupported by any
+       traceable run and are superseded by this figure — cite 0.1337, not
+       either of those. One seed (45 of 5) hit the resample-to-target
+       oversample cap (2,368/10,000 rows survived); excluding it the effect
+       would likely reach significance, but 0.1337 is the full,
+       un-cherry-picked 5-seed result. See KNOWN_ISSUES.md finding 9. -->
 
 LogiSCAG was developed for, and is demonstrated by, a cross-dataset study of constraint-validated synthetic delivery-delay data: the full pipeline runs reproducibly on the public DataCo benchmark [@dataco] and was additionally applied (aggregate results only) to a proprietary ~230k-record last-mile corpus. The study surfaced the silent evaluation failures now guarded against in the toolkit and found that a distance-based privacy effect significant on the public benchmark did not replicate on the proprietary corpus — evidence of the dataset-dependence of common privacy proxies and of the need for exactly this kind of audited, cross-dataset evaluation.
 

@@ -1,5 +1,27 @@
 # Strictness-ladder + sweep harness — change log
 
+## Documentation correction — 2026-08-23
+
+`logiscag/__init__.py`'s code<->paper gap note (item 5) cited TVAE's
+DCR-vs-strictness significance as "p = 0.49, 0.84" (from the paper) and, in a
+later revision, claimed a "corrected" recomputation gave "p = 0.98, not 0.84".
+Neither figure was ever backed by a run artifact anywhere in this repo.
+
+Ran the real thing: full protocol (5 seeds, 100 epochs, 10,000 synthetic
+rows), TVAE, `none` vs `strict+reject`, paired `ttest_rel` on `dcr_mean`, on
+the public DataCo benchmark. Result: **p = 0.1337**, not 0.84, not 0.98.
+Artifacts in `outputs/finding5_tvae_verify/` (`sweep_long.csv`,
+`sweep_summary.csv`, `sweep_significance.csv`, `run.log`), dated 2026-08-23.
+
+Updated `logiscag/__init__.py` item 5 and added `KNOWN_ISSUES.md` finding 9
+with the evidenced number and its provenance. Qualitative conclusion
+unchanged (directionally positive, not significant at 5 seeds). One caveat
+carried into both docs: `strict+reject` seed=45 hit the resample-to-target
+oversample cap (2,368/10,000 rows survived) and pulled the mean down;
+excluding it the effect would likely reach significance, but the reported
+figure is the full, un-cherry-picked 5-seed result. No code logic changed —
+documentation only.
+
 ## v0.2.0 — 2026-08-16
 
 - Removed 6 files not meant for public release: `calibration_batch.py`,

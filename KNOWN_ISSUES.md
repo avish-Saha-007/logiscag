@@ -355,3 +355,58 @@ synthesiser ignoring constraints by construction on the no-SDV path.
 Worth confirming which of those two causes is operative before the ladder is
 described as validated anywhere. The `strict+reject` tier is the only one whose
 enforcement is confirmed end-to-end, via the post-hoc `cag_rejection_filter`.
+
+## 9. TVAE DCR-vs-strictness significance figure was uncited and unverified (fixed)
+
+**Status.** Resolved 2026-08-23. Note this finding did not previously exist
+under this number in this file -- the discrepancy it documents lived only in
+`logiscag/__init__.py`'s code<->paper gap note (item 5) and in a TODO comment
+in `paper/paper.md`. Recorded here now so the correction has a home in the
+tracked known-issues register, not just a docstring.
+
+**What was wrong.** The paper (Sec 5.3, in the longer document this package's
+docstrings cross-reference, not `paper/paper.md` itself, which has no numbered
+sections) cited TVAE's DCR-vs-strictness significance as "p = 0.49, 0.84". A
+later note in `logiscag/__init__.py` claimed a "corrected" recomputation --
+from the resample-to-target, not bootstrap-padded, methodology -- gave
+"p = 0.98, not 0.84" instead. Neither number was ever backed by a run artifact
+anywhere in this repo: `outputs/` is gitignored and did not exist on disk, no
+script or test pinned either value, and `CHANGES.md` had no record of either
+recomputation.
+
+**Fix.** Ran the real thing: full protocol (5 seeds -- 42 through 46 -- 100
+epochs, 10,000 synthetic rows), TVAE, `none` vs `strict+reject`, on the public
+DataCo benchmark (180,519 canonical rows), using the project's standard paired
+`ttest_rel` on `dcr_mean` across seeds. Command:
+
+```
+privacy_utility_sweep.py --real <canonical DataCo CSV> \
+    --architectures TVAE --levels none strict+reject \
+    --seeds 5 --n-synth 10000 --epochs 100 --out outputs/finding5_tvae_verify
+```
+
+**Result: p = 0.1337** (t = -1.877), not 0.84 and not 0.98. Per-seed
+`dcr_mean`: `none` = [0.1279, 0.0, 0.0, 0.1489, 0.0459] (mean 0.0645);
+`strict+reject` = [0.3053, 0.2343, 0.2640, 0.0, 0.2151] (mean 0.2037).
+Artifacts dated 2026-08-23 in `outputs/finding5_tvae_verify/` (`sweep_long.csv`,
+`sweep_summary.csv`, `sweep_significance.csv`, `run.log`, both gitignored
+outputs and not committed, per this repo's existing `outputs/` convention --
+regenerate with the command above).
+
+**Qualitative conclusion unchanged.** DCR rises with strictness (directionally
+positive) but the difference is not statistically significant at 5 seeds --
+the same qualitative read as both prior (unverified) figures, just now with a
+number that traces to an actual run.
+
+**Caveat, carried into the corrected docstring.** `strict+reject` seed=45 hit
+the resample-to-target oversample cap: only 2,368 of the requested 10,000
+synthetic rows survived rejection (vs. 15-22% survival for its four sibling
+seeds), and it landed at `dcr_mean = 0.0`, pulling the `strict+reject` mean
+down from what it would otherwise be. Excluding that seed, the remaining
+4-seed effect would likely reach significance. p = 0.1337 is the full,
+un-cherry-picked 5-seed result, including that outlier -- reported as such
+rather than dropped, matching this project's documented practice of never
+quietly discarding an inconvenient seed. Not re-run or investigated further
+here; worth understanding why that seed hit the cap before this number is
+relied on for anything beyond replacing the two unsupported figures it
+corrects.

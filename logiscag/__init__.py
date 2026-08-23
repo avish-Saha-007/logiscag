@@ -91,12 +91,27 @@ fixed -- see KNOWN_ISSUES.md for full detail and recommended resolutions):
    `build_sdv_constraints`'s SDV-native tiers are unchanged -- this was an
    audit/reporting-layer fix only. See KNOWN_ISSUES.md finding 4.
 
-5. Sec 5.3 cites TVAE's DCR-vs-strictness significance as "p = 0.49, 0.84".
-   Recomputing none-vs-strict+reject from the corrected (resample-to-target,
-   not bootstrap-padded) data -- the methodology the paper itself claims in
-   Sec 3.2 -- gives p = 0.98, not 0.84. The qualitative conclusion ("no
-   significant response") is unchanged; the cited figure should be
-   regenerated from the corrected pipeline before submission.
+5. RESOLVED 2026-08-23 (was: an uncited, unverified figure). Sec 5.3 previously
+   cited TVAE's DCR-vs-strictness significance as "p = 0.49, 0.84", and an
+   earlier version of this note claimed a "corrected" recomputation gave
+   p = 0.98 instead. Neither figure was ever backed by a traceable run in this
+   repo -- both were narrative claims with no committed artifact behind them.
+
+   A real run now exists: full protocol (5 seeds, 100 epochs, 10,000 synthetic
+   rows), TVAE, none-vs-strict+reject, paired `ttest_rel` on `dcr_mean`, on the
+   public DataCo benchmark (dated 2026-08-23; artifacts in
+   outputs/finding5_tvae_verify/). It gives p = 0.1337, not 0.84 and not 0.98.
+   The qualitative conclusion is unchanged: DCR rises with strictness (mean
+   0.0645 at `none` vs. 0.2037 at `strict+reject`, a directionally positive
+   response) but the difference is not statistically significant at 5 seeds.
+
+   Caveat: the `strict+reject` seed=45 run hit the resample-to-target
+   oversample cap, surviving only 2,368 of the requested 10,000 rows (vs.
+   15-22% survival for its sibling seeds), and landed at dcr_mean=0.0 --
+   dragging the `strict+reject` mean down. Excluding that seed, the remaining
+   4-seed effect would likely reach significance. The reported p = 0.1337 is
+   the full, un-cherry-picked 5-seed result, including that outlier. See
+   KNOWN_ISSUES.md finding 9.
 
 All other cross-checked figures (Table 1 headline, the CTGAN minority-rate
 range, the rejection-overhead numbers, the label distribution, the ladder
