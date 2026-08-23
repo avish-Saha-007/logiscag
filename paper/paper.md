@@ -62,10 +62,9 @@ These choices matter because the output is an *audit* — a claim about what a d
      future use are marked "not acceptable". Fill in with what is concrete:
 
      - The master's dissertation this work was developed for: add a full
-       citation (paper.bib has a stub, `saha2026dissertation`) including the
-       institutional repository URL/handle once deposited. An examined,
-       deposited dissertation is realized impact and the strongest single piece
-       of evidence available here.
+       citation including the institutional repository URL/handle once
+       deposited. An examined, deposited dissertation is realized impact and
+       the strongest single piece of evidence available here.
      - The cross-dataset study: state the headline benchmark result concretely
        (Table 1 numbers) rather than describing it in the abstract.
      - Any presentation, viva, internal industry use, or request from another
