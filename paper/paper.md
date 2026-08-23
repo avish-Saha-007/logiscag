@@ -68,7 +68,7 @@ These choices matter because the output is an *audit* — a claim about what a d
        of evidence available here.
      - The cross-dataset study: state the headline benchmark result concretely
        (Table 1 numbers) rather than describing it in the abstract.
-     - Any presentation, viva, internal adidas use, or request from another
+     - Any presentation, viva, internal industry use, or request from another
        group — each is a "community-readiness signal" JOSS names explicitly.
      - The Sec 5.3 p-value has been regenerated and verified: TVAE's
        DCR-vs-strictness significance (none vs strict+reject, 5 seeds, paired
@@ -115,6 +115,6 @@ Generative AI tools were used in the preparation of this software and paper, as 
 
 # Acknowledgements
 
-[TODO: acknowledge as appropriate — colleagues, supervisor, institutional support. JOSS also requires a statement of financial support; if this work was supported by adidas India or BITS Pilani, state it here.]
+[TODO: acknowledge as appropriate — colleagues, supervisor, institutional support. JOSS also requires a statement of financial support; if this work was supported by a company or institution, state it here.]
 
 # References
