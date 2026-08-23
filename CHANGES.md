@@ -1,5 +1,19 @@
 # Strictness-ladder + sweep harness — change log
 
+## v0.2.1 — 2026-08-23
+
+- Corrected the TVAE DataCo DCR significance figure in the package docstring:
+  the verified value is p = 0.1337 (5 seeds, paired ttest_rel, none vs
+  strict+reject; source outputs/finding5_tvae_verify/, 2026-08-23). The
+  previously-stated 0.84 and 0.98 figures were unsupported by any traceable
+  run and have been removed.
+- Noted the seed-45 resample-cap caveat (2,368/10,000 rows; excluding it the
+  effect reaches significance, but the reported figure is the full 5-seed
+  result).
+- Recorded the correction in KNOWN_ISSUES.md (finding 9) and updated the
+  stale drafting note in paper/paper.md that referenced the disproven
+  figures.
+
 ## Documentation correction — 2026-08-23
 
 `logiscag/__init__.py`'s code<->paper gap note (item 5) cited TVAE's
