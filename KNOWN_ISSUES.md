@@ -1,8 +1,34 @@
 # Known Issues
 
-## 1. SDV-native constraint tiers may not be enforcing anything (critical, tracked)
+## Status Summary
+
+| # | Finding | Status |
+|---|---------|--------|
+| 1 | SDV-native constraint tiers may not be enforcing anything | Open — deferred |
+| 2 | numpy 2.x / torch ABI mismatch on a fresh install | Resolved |
+| 3 | `test_metrics.py` depended on a missing `viva_demo.py` module | Resolved |
+| 4 | R3/R5 audit-level code<->paper mismatches | Resolved |
+| 5 | `pipeline.py`'s blanket warning suppression | Resolved |
+| 6 | `build_valid_carrier_combos` admitted null carriers on pandas >= 3 | Resolved |
+| 7 | Paper's R4 non-negativity half was not checked anywhere | Resolved |
+| 8 | Middle strictness tiers show identical metrics on the verification path | Open — deferred |
+| 9 | TVAE DCR-vs-strictness significance figure was uncited and unverified | Resolved |
+
+Findings #1 and #8 are a single root cause — #8 is a downstream symptom of #1 (SDV silently
+dropping dict-style constraints) — and both are deliberately deferred rather than open by neglect;
+see finding #1 for the deferral rationale.
+
+## Open
+
+### 1. SDV-native constraint tiers may not be enforcing anything (tracked; deferred — not user-facing on the public benchmark)
 
 **Status:** documented, not fixed. Do not regenerate Table 1 from this finding alone.
+
+**Deferred rationale:** on the public DataCo benchmark this is a structural no-op (finding 4's
+saturated-vocabulary and zero-latency analysis shows R3/R5 cannot fire on this schema regardless
+of enforcement), the underlying `sdv.cag` deprecation warning is already surfaced rather than
+silently swallowed (finding 5), and a real fix is deferred to a dataset whose middle strictness
+tiers can actually exercise it.
 
 **What's wrong:** `pipeline/constraints.py`'s `build_sdv_constraints()` returns
 constraints as plain Python dicts (`{"constraint_class": "Inequality",
@@ -66,7 +92,35 @@ re-verify Table 1's numbers before the corpus run / camera-ready. Pin the SDV
 version in `pyproject.toml` once that rewrite is verified, so this doesn't
 silently regress again on a future `pip install --upgrade sdv`.
 
-## 2. numpy 2.x / torch ABI mismatch on a fresh install (fixed)
+**Correction to this finding's framing (2026-09-19).** The "unpinned
+`pip install sdv`" framing above, and this follow-up's "pin the SDV version...
+once verified" instruction, describe a state that isn't true of this repo's
+actual install path: `pyproject.toml`'s `sdv` and `dev` optional-dependency
+extras have pinned `sdv==1.37.2` since the initial packaging commit,
+predating this finding. Anyone installing via the documented path
+(`pip install -e ".[sdv]"` or `".[dev]"`) already gets the pinned version;
+the framing above reflects an ad hoc, unpinned `pip install sdv` used during
+investigation, not this package's own dependency declaration. The pin this
+follow-up recommends already exists -- the genuine remaining follow-up is the
+`sdv.cag` object-API rewrite itself, not the pin.
+
+### 8. Middle strictness tiers show identical metrics on the verification path
+
+**Status.** Open — expected to be a symptom of finding 1, not a separate bug.
+
+`python -m logiscag.reproduce --verify` reports identical fidelity, utility,
+and privacy figures across `none`, `temporal`, `moderate`, and `strict` for a
+given architecture. This is consistent with finding 1 (SDV silently dropping
+dict-style constraints, so the middle tiers enforce nothing), and with the mock
+synthesiser ignoring constraints by construction on the no-SDV path.
+
+Worth confirming which of those two causes is operative before the ladder is
+described as validated anywhere. The `strict+reject` tier is the only one whose
+enforcement is confirmed end-to-end, via the post-hoc `cag_rejection_filter`.
+
+## Resolved
+
+### 2. numpy 2.x / torch ABI mismatch on a fresh install (fixed)
 
 **Status:** fixed by pinning `numpy<2` in `pyproject.toml`.
 
@@ -79,7 +133,7 @@ for every real result in this project has `numpy==1.26.4`, which does not hit
 this. Pinned `numpy<2` accordingly; re-verified `pip install -e ".[sdv]"` in a
 fresh venv resolves `numpy==1.26.4` and imports cleanly with no warning.
 
-## 3. `test_metrics.py` depended on a missing `viva_demo.py` module
+### 3. `test_metrics.py` depended on a missing `viva_demo.py` module
 
 **Status:** resolved via a one-line compatibility shim (`viva_demo.py` at the
 repo root, `from pipeline import *`), not a logic fix. `pipeline/__init__.py`'s
@@ -94,7 +148,7 @@ has been removed entirely. `tests/test_metrics.py` now imports the same 12
 names directly from the `pipeline` package facade instead of going through the
 shim.
 
-## 4. R3 (capture latency) and R5 (referential carrier integrity) audit-level code<->paper mismatches
+### 4. R3 (capture latency) and R5 (referential carrier integrity) audit-level code<->paper mismatches
 
 **Status:** both resolved in `audit_constraints()` (2026-06-30), ahead of the
 v0.1.0 GitHub/Zenodo release.
@@ -166,7 +220,7 @@ construction, not merely re-verified empirically. `integrity_check_synthetic`
 not implementing R1/R4/R5/R3b despite its docstring claiming to was already a
 known, separate inconsistency at packaging time and remains untouched here.
 
-## 5. `pipeline/pipeline.py`'s blanket warning suppression (narrowed)
+### 5. `pipeline/pipeline.py`'s blanket warning suppression (narrowed)
 
 **Status:** narrowed 2026-06-30. Was: a bare `warnings.filterwarnings("ignore")`
 at import time -- no `category=`/`module=`/`message=` scoping, suppressing
@@ -220,7 +274,7 @@ relying on it as a real guard.
 **Scope:** console output only. No check logic, audit keys, CVR, or any
 other result changed.
 
-## 6. `build_valid_carrier_combos` admitted null carriers on pandas >= 3 (fixed)
+### 6. `build_valid_carrier_combos` admitted null carriers on pandas >= 3 (fixed)
 
 **Symptom.** `tests/test_constraint_catalog.py::test_build_valid_carrier_combos_derives_from_real_data_only`
 failed on a modern dependency stack: a row with a null `last_scac` produced a
@@ -248,7 +302,7 @@ inside `audit_constraints` already used `.isna() |` and was never affected.
 **Verified** by the existing regression test, which now passes; the full suite
 is green on pandas 3.0.2 / numpy 1.26.4.
 
-## 7. Paper's R4 non-negativity half was not checked anywhere (fixed)
+### 7. Paper's R4 non-negativity half was not checked anywhere (fixed)
 
 **Status.** Resolved 2026-08-16 via option 1 below — the check is implemented,
 so the paper's "eight rules" claim now holds. Audit layer only.
@@ -342,21 +396,7 @@ called out above. Verified zero stale references to the old key remain in
 code. This does not resolve the broader three-scheme mismatch noted above,
 which remains open.
 
-## 8. Middle strictness tiers show identical metrics on the verification path
-
-**Status.** Open — expected to be a symptom of finding 1, not a separate bug.
-
-`python -m logiscag.reproduce --verify` reports identical fidelity, utility,
-and privacy figures across `none`, `temporal`, `moderate`, and `strict` for a
-given architecture. This is consistent with finding 1 (SDV silently dropping
-dict-style constraints, so the middle tiers enforce nothing), and with the mock
-synthesiser ignoring constraints by construction on the no-SDV path.
-
-Worth confirming which of those two causes is operative before the ladder is
-described as validated anywhere. The `strict+reject` tier is the only one whose
-enforcement is confirmed end-to-end, via the post-hoc `cag_rejection_filter`.
-
-## 9. TVAE DCR-vs-strictness significance figure was uncited and unverified (fixed)
+### 9. TVAE DCR-vs-strictness significance figure was uncited and unverified (fixed)
 
 **Status.** Resolved 2026-08-23. Note this finding did not previously exist
 under this number in this file -- the discrepancy it documents lived only in
