@@ -13,6 +13,7 @@
 | 7 | Paper's R4 non-negativity half was not checked anywhere | Resolved |
 | 8 | Middle strictness tiers show identical metrics on the verification path | Open — deferred |
 | 9 | TVAE DCR-vs-strictness significance figure was uncited and unverified | Resolved |
+| 10 | `delay_label` quantile cut-offs are fit on the full dataset, not a train split, on the no-promise-column (corpus/DISSERTATION) schema | Open — not reached by any committed/published result |
 
 Findings #1 and #8 are a single root cause — #8 is a downstream symptom of #1 (SDV silently
 dropping dict-style constraints) — and both are deliberately deferred rather than open by neglect;
@@ -117,6 +118,75 @@ synthesiser ignoring constraints by construction on the no-SDV path.
 Worth confirming which of those two causes is operative before the ladder is
 described as validated anywhere. The `strict+reject` tier is the only one whose
 enforcement is confirmed end-to-end, via the post-hoc `cag_rejection_filter`.
+
+### 10. `delay_label` quantile cut-offs are fit on the full dataset, not a train split, on the no-promise-column (corpus/DISSERTATION) schema
+
+**Status:** documented, not fixed. Surfaced by a provenance audit (issue:
+"audit: provenance of data-derived constraint components"); full writeup in
+`docs/audits/2026-10-02-constraint-provenance/REPORT.md`.
+
+**What's wrong:** `pipeline.data._derive_delay_labels_from_transit` assigns
+the three-class `delay_label` by computing the 54.42nd/92.00th percentile of
+`transit_duration_days` over whatever dataframe it is given, then thresholding
+every row against those two cut-points. It is called from
+`_apply_latest_derived_features` -- the single shared implementation behind
+`generate_proxy_dataset`, `load_real_dataset`, and `phase1_derived_features`
+-- whenever `date_promise_delivery`/`date_promise_shipment` are absent (the
+no-promise-column schema used for the proprietary ~230k-record corpus; see
+`pipeline/data.py`'s "DISSERTATION dataset" comments). There is no train/test
+split anywhere upstream of this call in `pipeline.pipeline.run_pipeline`: the
+entire loaded dataframe is labeled in one pass, and only afterwards do
+`pipeline/evaluation.py`'s `_temporal_holdout_split`/`StratifiedKFold`/
+`TimeSeriesSplit` carve out evaluation folds -- from the already-labeled data.
+The practical effect: the class-boundary thresholds are a function of the full
+sample, including whichever rows later become the "held-out" test fold used
+to report TRTR/TSTR/SMOTE/transfer-learning numbers.
+
+**Does NOT affect the public DataCo benchmark.** `dataco_to_canonical` always
+derives `date_promise_delivery`/`date_promise_shipment`
+(`dataco_adapter.py:46-58`), so DataCo always takes the sibling function
+`_derive_delay_labels_from_sla_buffer`'s path instead -- a fixed 2-day
+business threshold, not a quantile fit from data. No published Table 1 number,
+or any other committed artifact in this repo, is affected.
+
+**Not independently confirmed against the proprietary corpus run** cited in
+`paper/paper.md`'s aggregate-results sentence: that corpus and its original
+run artifacts are not in this repository (`DATASHEET.md` notes the data is not
+redistributable), so whether the paper's proprietary-corpus numbers went
+through this exact code path, and if so by how much the leak moved them, is
+unverified here and worth checking by hand against that corpus if it is still
+available.
+
+**Regression-tested as an `xfail`**, not yet fixed, in
+`tests/test_constraint_provenance.py::test_transit_quantile_label_cutoffs_are_not_influenced_by_test_only_rows`
+(`strict=True`, so it will fail loudly as an unexpected XPASS if the
+underlying behavior changes without this note being updated). A passing
+counterpart test in the same file pins that the DataCo-path fixed-threshold
+rule is not affected.
+
+**Recommended follow-up (tracked, not done here):** fit `q1`/`q2` on the
+train split only (wherever the real train/test split for a given run ends up
+being drawn) and apply the same fixed thresholds to label the test split,
+rather than fitting per-dataframe. Out of scope here per the audit's
+instructions (report first, no behavior change) and because the fix touches
+the same "no train/test split exists upstream of generation at all"
+architectural gap documented in the audit report's headline finding, which is
+larger than this one label-derivation function.
+
+**Also noted by the same audit, not independently tracked as its own open
+finding because it is either dead code or already a documented no-op:**
+`pipeline.constraints.build_valid_carrier_combos` (the real-data-only
+reference vocabulary for R4/R5 membership, added by finding 4 above) is never
+called from any production code path -- only from `tests/test_constraint_catalog.py`.
+`pipeline.pipeline.run_pipeline`'s `audit_constraints()` call never passes
+`valid_combos`, so R4/R5 always runs the weaker presence-only fallback in
+real runs, and the finding-4 fix has no live caller. Separately, the `strict`
+tier's `FixedCombinations` carrier/service vocabulary in `build_sdv_constraints`
+is built from the same full, unsplit dataframe as everything else in this
+pipeline, but this is currently inert per finding 1 (SDV silently drops these
+dict-style constraints) -- a latent rather than live leak risk, worth
+revisiting if finding 1's `sdv.cag` rewrite ever lands without also
+introducing a real train/test split.
 
 ## Resolved
 
