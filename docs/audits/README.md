@@ -11,10 +11,12 @@ pipeline behavior. Each pair is `REPORT.md` (the findings) and
 
 | Date | Title | Branch | Related KNOWN_ISSUES.md findings |
 |---|---|---|---|
-| 2026-10-02 | Constraint provenance audit (B1) | `audit/provenance-of-data-derived-constraint-components` | #10 |
+| 2026-10-02 | Constraint provenance audit (B1) | `audit/provenance-of-data-derived-constraint-components` | #10 (opened; status wording superseded by B1b, see #10's update note) |
+| 2026-10-02 | Data scope audit (B1b) | `audit/data-scope-of-generator-training-and-evaluation-populations` (stacked on B1) | #10 (update note), #11, #12 |
 
-See this audit's `REPORT.md` for the full findings table and STOP condition,
-and `PROVENANCE.md` for exact scope/commit/environment. One detail from the
-proprietary corpus referenced by this audit (the code's internal
-schema-variant name) has been generalized in favor of neutral wording; see
-`PROVENANCE.md` for what was changed and why.
+See each audit's `REPORT.md` for the full findings table and STOP conditions,
+and `PROVENANCE.md` for exact scope/commit/environment. Some details from the
+proprietary corpus referenced by these audits (its exact row count, default
+filename, and the code's internal schema-variant name) have been redacted
+from both reports in favor of neutral wording; see each `PROVENANCE.md` for a
+note on what was redacted and why.

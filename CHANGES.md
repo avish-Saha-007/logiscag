@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Data-scope audit (B1b, issue: "audit: data scope of generator training and
+  evaluation populations"), follow-up to the provenance audit below: traced
+  exactly which real rows the generator, TRTR, TSTR, DCR, and the
+  membership-inference audit each use. Found TSTR/DCR score against the exact
+  rows the generator was trained on (no held-out population exists anywhere
+  before `train_sdv_models`), logged as KNOWN_ISSUES.md finding 11 -- does not
+  bias the strictness-ladder comparisons, but TSTR is not a true
+  generalization test. Confirmed the MIA member/non-member split is correctly
+  disjoint (not a new leak). Flagged an unresolved naming contradiction (the
+  default filename `load_real_dataset` falls back to, see
+  `pipeline/data.py:267`, vs. "absent in the DISSERTATION dataset") bearing
+  on whether finding 10 actually fires on the real proprietary corpus. No
+  behavior changed. See
+  `docs/audits/2026-10-02-data-scope/REPORT.md`.
 - Constraint-provenance audit (issue: "audit: provenance of data-derived
   constraint components"): traced every data-derived constraint/vocabulary/
   threshold/label-cutoff component in both the DataCo and corpus code paths

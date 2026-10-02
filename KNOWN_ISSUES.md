@@ -13,7 +13,9 @@
 | 7 | Paper's R4 non-negativity half was not checked anywhere | Resolved |
 | 8 | Middle strictness tiers show identical metrics on the verification path | Open — deferred |
 | 9 | TVAE DCR-vs-strictness significance figure was uncited and unverified | Resolved |
-| 10 | `delay_label` quantile cut-offs are fit on the full dataset, not a train split, on the no-promise-column (corpus/DISSERTATION) schema | Open — not reached by any committed/published result |
+| 10 | `delay_label` quantile cut-offs are fit on the full dataset, not a train split, on the no-promise-column (corpus/DISSERTATION) schema | Open — unverified whether the real corpus schema takes this branch at all (see update below) |
+| 11 | TSTR/DCR evaluate against the exact real rows the generator was trained on, not a held-out population | Open — doesn't bias the strictness-ladder comparisons, but TSTR is not a true generalization test |
+| 12 | Carrier–service combination membership is never actually enforced or audited anywhere, despite `build_valid_carrier_combos` existing and being tested | Open — affects the scope of published CVR results |
 
 Findings #1 and #8 are a single root cause — #8 is a downstream symptom of #1 (SDV silently
 dropping dict-style constraints) — and both are deliberately deferred rather than open by neglect;
@@ -187,6 +189,118 @@ pipeline, but this is currently inert per finding 1 (SDV silently drops these
 dict-style constraints) -- a latent rather than live leak risk, worth
 revisiting if finding 1's `sdv.cag` rewrite ever lands without also
 introducing a real train/test split.
+
+**Update (2026-10-02, follow-up audit "B1b" — issue: "audit: data scope of
+generator training and evaluation populations"; full writeup in
+`docs/audits/2026-10-02-data-scope/REPORT.md`).** Whether this finding
+actually fires on the real proprietary corpus is **unverified and possibly
+contradicted by this repo's own naming**: the default filename
+`pipeline.data.load_real_dataset` falls back to (see `pipeline/data.py:267`)
+names the data it expects after "delivery promise," which on its face says
+the live corpus *does* carry promise/delivery-promise fields -- that would
+put it on the same safe, fixed-threshold path as DataCo
+(`_has_promise_cols` would be `True`). That would contradict the "absent in
+the DISSERTATION dataset" framing this finding was opened under. No corpus
+CSV or schema doc exists in this repository to settle which is true (the
+data is proprietary and not redistributable, per `DATASHEET.md`). **Status
+intentionally left open on both this point and the original finding** --
+flagged, not resolved either way, per the B1b audit's STOP instruction.
+Check the real corpus file's columns by hand before relying on this finding's
+applicability in either direction.
+
+### 11. TSTR/DCR evaluate against the exact real rows the generator was trained on, not a held-out population
+
+**Status:** documented, not fixed. Surfaced by the same B1b follow-up audit;
+full writeup in `docs/audits/2026-10-02-data-scope/REPORT.md`.
+
+**What's wrong:** in `privacy_utility_sweep.run_sweep`, a single `real_df`
+object is passed whole to `train_sdv_models(real_df, ...)` and, two calls
+later in the same loop, to `evaluate_synth(real_df, synth_df, ...)` --> both
+`compute_dcr_nnaa(real_df, synth_df)` and `tstr_evaluate(real_df, synth_df,
+...)`. `tstr_evaluate` carves its "held-out" scoring folds out of this same
+`real_df` via `_generate_cv_splits`. Since the generator was already fit on
+100% of `real_df` before those folds were ever drawn, every TSTR test fold is
+a subset of rows the generator has seen. The RF classifier trained inside
+TSTR only ever fits on `synth_df`, not on real rows directly, so this is not
+the same kind of leak as finding 10 (no information crosses into the
+classifier's training labels) -- but TSTR's name and purpose ("does
+synthetic data transfer to real data the generator has never seen") is not
+what is actually being measured.
+
+**Does not bias the paper's strictness-ladder comparisons.** The overlap is
+100% at every strictness level and every architecture within a given run, so
+relative claims across the ladder (e.g. "DCR rises with strictness") are not
+differentially affected. It affects how the *absolute* TSTR/DCR numbers
+should be read: DCR being computed against the generator's own training set
+is standard, correct DCR methodology (distance-to-training-record is the
+literal question DCR answers) and is not a bug; TSTR being computed this way
+is the more consequential half of this finding, since "generalizes to real
+data" is the metric's implicit claim.
+
+**Not independently confirmed to move any committed number** -- this finding
+describes a property of the evaluation design, not a code defect with a
+before/after numeric delta to measure the way findings 6/7/9 had one.
+
+**Recommended follow-up (tracked, not done here):** shares the same
+root architectural gap as finding 10 and the original provenance audit's
+headline finding -- introducing a genuine train/test split before
+`train_sdv_models` is called (training the generator on the train split only,
+then evaluating TSTR/DCR against the disjoint test split) would resolve this
+and finding 10 together, rather than as two independent patches.
+
+### 12. Carrier-service combination membership is never actually enforced or audited anywhere, despite `build_valid_carrier_combos` existing and being tested
+
+**Status:** documented, not fixed. Surfaced by the B1b data-scope audit;
+full writeup in `docs/audits/2026-10-02-data-scope/REPORT.md` (Q6a-Q6c).
+
+**What's wrong:** three independent carrier/service-related checks exist in
+this codebase, and none of them verify that an observed `(last_scac,
+carrier_service_code)` pair is a real, previously-seen combination:
+
+- **`cag_rejection_filter`** (the actual post-hoc enforcement mechanism at
+  `strict+reject`) checks `last_scac` and `carrier_service_code` for
+  *presence only* -- non-null and not a sentinel string -- independently of
+  each other. It does not check the pairing.
+- **`integrity_check_synthetic`** (the function behind the sweep's published
+  `cvr` metric, e.g. the headline 4.31%/2.96%/0.00% none/temporal/strict+reject
+  figures) checks *neither* presence *nor* membership -- it has no
+  `last_scac`/`carrier_service_code` check of any kind. This was already
+  noted as a docstring/behavior mismatch in finding 4's resolution
+  ("`integrity_check_synthetic` not implementing R1/R4/R5/R3b despite its
+  docstring claiming to"), but is restated here as its own finding because it
+  bears directly on what the published CVR numbers do and do not cover.
+- **`audit_constraints`**, in its only production call site
+  (`pipeline.pipeline.run_pipeline`, `pipeline/pipeline.py:563`), never
+  receives a `valid_combos` argument, so it always runs the weaker
+  presence-only fallback rather than true membership checking.
+
+`build_valid_carrier_combos(real_df)` -- the real-data-only reference
+vocabulary that would let any of the above check genuine combination
+membership (added alongside finding 4) -- is fully implemented and
+regression-tested in `tests/test_constraint_catalog.py`, but is **never
+called from any production code path.** It is dead code outside the test
+suite.
+
+**Impact.** Affects the *scope* of the published CVR results, not their
+correctness as computed: the sweep's `cvr` metric has always measured
+exactly what its (narrower) implementation checks, and that has not changed.
+But none of the carrier/service referential-integrity enforcement described
+in KNOWN_ISSUES.md finding 4's resolution, or implied by the paper's
+Appendix C `KnownCombos` specification, is actually exercised anywhere in a
+real run. A synthetic row can pair any individually-valid-looking carrier
+with any individually-valid-looking service code and pass every check in the
+pipeline, even if that exact pairing never occurred in real data.
+
+**Not independently confirmed to move any committed number** -- same caveat
+as finding 11: this describes a gap in what is checked, not a code defect
+with a before/after numeric delta.
+
+**Planned fix (tracked, not done here):** wire `build_valid_carrier_combos`
+into the production call sites above, built from the training split only
+(once a real train/test split exists upstream -- see finding 10/11's shared
+architectural follow-up), and widen `integrity_check_synthetic` to include
+the membership check so the published CVR metric's scope matches what it is
+documented to cover.
 
 ## Resolved
 
